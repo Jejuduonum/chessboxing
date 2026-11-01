@@ -63,7 +63,7 @@ Only `app/` is built. The design PDFs, mockups and notes at the repo root are ig
    | `LICHESS_TOKEN` | Your latest games, in order (read-only, no scopes) |
    | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | Sign-in and sync (public values) |
    | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Server-side account checks and coach limits |
-   | `ANTHROPIC_API_KEY` | AI coach notes next to the engine feedback |
+   | `GEMINI_API_KEY` (optional `GEMINI_MODEL`) | AI coach notes next to the engine feedback (Gemini API free tier) |
 
    The two `VITE_` values are public by design. The rest are server-only and never reach the browser.
 5. **Deploy**. The first build takes about a minute; you get `https://<project>.vercel.app`.
@@ -104,15 +104,15 @@ Step through any of your games with a verdict on every move (Best, Good, Inaccur
 - **Engine:** Stockfish 19 (lite, single-threaded WASM) runs on the device from `public/engine/`. If Lichess already analysed the game, its analysis is used instead. Reviews are saved, so each game is analysed once.
 - **Pulling your latest games:** with `LICHESS_TOKEN` set on the server, `api/games.ts` asks Lichess for that player's newest finished games in the selected time control (moves, evaluations and opening included), trims them to what the review screen needs and returns them under **Latest games**. The list refreshes with **Refresh**. Responses are cached for 60 seconds, and each IP is limited to 60 pulls an hour.
 - **Without a token (username only, no login):** Lichess no longer lists a player's games to anonymous apps, so the app reads your public stats for the time control (`/api/user/{username}/perf/{perf}`), which name your best wins, worst losses, streak games (including your most recent game) and rating highs/lows, then fetches those games in one request (`POST /api/games/export/_ids`, which still works without a login and includes Lichess's own analysis when it exists). They're shown as *Latest*, *Worst losses* and *Best wins*. Any other game: paste its Lichess link or PGN.
-- **AI coach:** `api/coach.ts` is a small server function that sends the engine data for your moves to Claude and returns a comment per move, a game summary and a key lesson. It needs an Anthropic API key on the server:
-  - **Vercel:** add `ANTHROPIC_API_KEY` in Project → Settings → Environment Variables; the `api/` folder is deployed automatically.
-  - **Local:** `ANTHROPIC_API_KEY=sk-ant-… npm run dev` (the dev server serves `api/coach` too).
-  - Uses `claude-opus-5-5` with structured JSON output, one request per game, with Anthropic's default refusal fallback enabled. Without a key, engine feedback still covers every move.
+- **AI coach:** `api/coach.ts` is a small server function that sends the engine data for your moves to Google's Gemini (free tier) and returns a comment per move, a game summary and a key lesson. It needs a free Gemini API key from aistudio.google.com → **Get API key**:
+  - **Vercel:** add `GEMINI_API_KEY` in Project → Settings → Environment Variables; the `api/` folder is deployed automatically.
+  - **Local:** `GEMINI_API_KEY=… npm run dev` (the dev server serves `api/coach` too).
+  - Uses `gemini-3.8-flash` (override with `GEMINI_MODEL`) with structured JSON output, one request per game, falling back to `gemini-2.5-flash` if the first model is rate-limited or unavailable. Free-tier requests are rate-limited by Google and may be used to improve Google's products. Without a key, engine feedback still covers every move.
   - **Chess-only guardrails:** no free text ever reaches the model. The endpoint accepts only strict chess data (SAN moves, FEN positions, verdict and evaluation values, ratings), replays the game with chess.js and rejects anything illegal or inconsistent with `400 not_chess`. Unknown fields and the opening name are dropped. Bodies over 120 KB get `413`, and each client is limited to 30 requests an hour (`429`). The system prompt restricts the model to coaching this game and has it flag anything off-topic, and only comments for the plies that were sent are returned, each length-capped. The rate limit is per server instance; for a public launch, back it with a shared store (e.g. Vercel KV / Upstash).
 
 ## Stack
 
-React + Vite + TypeScript, Tailwind CSS, Recharts, Dexie (IndexedDB), vite-plugin-pwa, chess.js, Stockfish.js, Anthropic SDK (server function only). Fonts (Inter, Barlow Condensed) are bundled, so they work offline.
+React + Vite + TypeScript, Tailwind CSS, Recharts, Dexie (IndexedDB), vite-plugin-pwa, chess.js, Stockfish.js, Gemini API (server function only, plain `fetch`). Fonts (Inter, Barlow Condensed) are bundled, so they work offline.
 
 ```
 src/
@@ -127,7 +127,7 @@ src/
   lib/review.ts      per-move verdicts, accuracy and engine feedback
   lib/coach.ts       client for the AI coach endpoint
 api/games.ts         server function: latest games via a read-only Lichess token
-api/coach.ts         server function: Claude coaching (needs ANTHROPIC_API_KEY)
+api/coach.ts         server function: Gemini coaching (needs GEMINI_API_KEY)
 supabase/schema.sql  cloud tables and row-level security for optional sync
 ```
 

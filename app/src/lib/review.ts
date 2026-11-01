@@ -20,7 +20,7 @@ export interface MoveReview {
   verdict: Verdict;
   winLoss: number; // winning-chance drop for the mover, 0–100
   note: string; // engine-written feedback (always present)
-  coach?: string; // Claude-written feedback (when available)
+  coach?: string; // AI-written feedback (when available)
 }
 
 export interface GameReview {

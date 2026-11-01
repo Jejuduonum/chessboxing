@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 /**
  * Serves api/*.ts (Web-standard `POST(request)` handlers, as deployed on Vercel) during `npm run dev`,
- * so the AI coach works locally with ANTHROPIC_API_KEY set in your shell.
+ * so the AI coach works locally with GEMINI_API_KEY set in your shell.
  */
 function devApi(): Plugin {
   return {

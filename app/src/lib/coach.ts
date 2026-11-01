@@ -51,7 +51,7 @@ export async function requestCoaching(game: LichessGame, review: GameReview): Pr
 
 export function coachErrorText(kind: string): string {
   switch (kind) {
-    case 'not_configured': return 'AI coach isn’t set up yet — add an Anthropic API key to the server (see README). Engine feedback is shown for every move meanwhile.';
+    case 'not_configured': return 'AI coach isn’t set up yet — add a Gemini API key to the server (see README). Engine feedback is shown for every move meanwhile.';
     case 'not_chess': return 'The coach only reviews legal chess games, and this one didn’t check out. Engine feedback is still shown for every move.';
     case 'signed_out': return 'Sign in to get AI coach notes. Engine feedback is shown for every move meanwhile.';
     case 'offline': return 'You’re offline. Engine feedback still works; coach notes need a connection.';

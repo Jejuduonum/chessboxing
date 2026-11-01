@@ -1,16 +1,17 @@
 /**
  * POST /api/coach — turns engine analysis of one game into plain-English coaching.
  *
- * Runs server-side so the Anthropic API key never reaches the browser.
- * Deploy: Vercel picks this file up automatically (set ANTHROPIC_API_KEY in the project's
- * environment variables). In `npm run dev`, vite.config.ts serves it from the same path.
+ * Runs server-side so the Gemini API key never reaches the browser. Uses Google's Gemini API free
+ * tier (key from aistudio.google.com). Deploy: Vercel picks this file up automatically (set
+ * GEMINI_API_KEY in the project's environment variables; optional GEMINI_MODEL overrides the
+ * model). In `npm run dev`, vite.config.ts serves it from the same path.
  *
  * Guardrails — this endpoint only ever coaches chess:
  *  1. No free text reaches the model. Every field must match a strict chess format (SAN moves,
  *     FEN positions, verdict and evaluation enums, small integers). Free-text fields such as the
  *     opening name are ignored; the model identifies the opening from the moves itself.
  *  2. The game is replayed with chess.js: every move must be legal, and every position and move
- *     sent for coaching must match that replay. Anything else is rejected before calling Claude.
+ *     sent for coaching must match that replay. Anything else is rejected before calling the model.
  *  3. Accounts and limits: when the server is connected to Supabase, only signed-in users can use
  *     the coach, limited per account (coach_usage table). Otherwise a per-client limit applies.
  *     Size limits stop the endpoint being used as a general-purpose AI proxy.
@@ -18,7 +19,6 @@
  *     it flag anything that isn't a chess game instead of answering it.
  *  5. The response is checked: only comments for plies that were sent, each capped in length.
  */
-import Anthropic from '@anthropic-ai/sdk';
 import { Chess } from 'chess.js';
 import { adminClient, userFromRequest } from './_auth';
 
@@ -156,12 +156,11 @@ const SCHEMA = {
         type: 'object',
         properties: { ply: { type: 'integer' }, comment: { type: 'string' } },
         required: ['ply', 'comment'],
-        additionalProperties: false,
       },
     },
   },
   required: ['on_topic', 'summary', 'key_lesson', 'moves'],
-  additionalProperties: false,
+  propertyOrdering: ['on_topic', 'summary', 'key_lesson', 'moves'],
 } as const;
 
 const json = (body: unknown, status = 200) =>
@@ -215,35 +214,62 @@ export async function POST(request: Request): Promise<Response> {
     'Return a comment for every ply listed above.',
   ].join('\n');
 
-  try {
-    const client = new Anthropic();
-    const response = await client.beta.messages.create({
-      model: 'claude-opus-5-5',
-      max_tokens: 16000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
-      system: SYSTEM,
-      messages: [{ role: 'user', content: prompt }],
-    } as unknown as Anthropic.Beta.Messages.MessageCreateParamsNonStreaming);
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return json({ error: 'not_configured' }, 503);
 
-    if (response.stop_reason === 'refusal') return json({ error: 'refused' }, 422);
-    if (response.stop_reason === 'max_tokens') return json({ error: 'too_long' }, 422);
-    const out = JSON.parse(response.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('')) as {
-      on_topic: boolean; summary: string; key_lesson: string; moves: { ply: number; comment: string }[];
+  // Free-tier models. If the first is rate-limited or retired, try the older, widely available one.
+  const models = [process.env.GEMINI_MODEL || 'gemini-3.8-flash', 'gemini-2.5-flash'];
+  let last: Response | null = null;
+  for (const model of [...new Set(models)]) {
+    let res: globalThis.Response;
+    try {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM }] },
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, maxOutputTokens: 16000, temperature: 0.4 },
+        }),
+        signal: AbortSignal.timeout(50_000),
+      });
+    } catch {
+      last = json({ error: 'upstream', status: 0 }, 502);
+      continue;
+    }
+
+    if (!res.ok) {
+      const detail = await res.text();
+      if (res.status === 401 || res.status === 403 || /API_KEY_INVALID|API key not valid/i.test(detail)) return json({ error: 'not_configured' }, 503);
+      last = res.status === 429 ? json({ error: 'rate_limited' }, 429) : json({ error: 'upstream', status: res.status }, 502);
+      if (res.status === 429 || res.status === 404 || res.status >= 500) continue; // try the fallback model
+      return last;
+    }
+
+    const data = (await res.json()) as {
+      promptFeedback?: { blockReason?: string };
+      candidates?: { finishReason?: string; content?: { parts?: { text?: string; thought?: boolean }[] } }[];
+      modelVersion?: string;
     };
+    const cand = data.candidates?.[0];
+    if (data.promptFeedback?.blockReason || !cand) return json({ error: 'refused' }, 422);
+    if (cand.finishReason === 'MAX_TOKENS') return json({ error: 'too_long' }, 422);
+    if (cand.finishReason && cand.finishReason !== 'STOP') return json({ error: 'refused' }, 422);
+
+    let out: { on_topic: boolean; summary: string; key_lesson: string; moves: { ply: number; comment: string }[] };
+    try {
+      out = JSON.parse((cand.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? '').join(''));
+    } catch {
+      return json({ error: 'bad_output' }, 502);
+    }
     if (!out.on_topic) return json({ error: 'not_chess', reason: 'model flagged the request as off-topic' }, 400);
 
     // Only keep comments for plies we asked about, each capped in length.
     const asked = new Set(body.moves.map((m) => m.ply));
-    const moves = (out.moves ?? []).filter((m) => asked.has(m.ply)).map((m) => ({ ply: m.ply, comment: clip(m.comment, 400) }));
-    return json({ summary: clip(out.summary, 800), keyLesson: clip(out.key_lesson, 300), moves, model: response.model });
-  } catch (error) {
-    if (error instanceof Anthropic.AuthenticationError) return json({ error: 'not_configured' }, 503);
-    if (error instanceof Anthropic.RateLimitError) return json({ error: 'rate_limited' }, 429);
-    if (error instanceof Anthropic.APIError) return json({ error: 'upstream', status: error.status }, 502);
-    if (error instanceof SyntaxError) return json({ error: 'bad_output' }, 502);
-    // Missing credentials surface as a plain Error from the SDK.
-    return json({ error: 'not_configured' }, 503);
+    const moves = (Array.isArray(out.moves) ? out.moves : [])
+      .filter((m) => Number.isInteger(m?.ply) && asked.has(m.ply))
+      .map((m) => ({ ply: m.ply, comment: clip(m.comment, 400) }));
+    return json({ summary: clip(out.summary, 800), keyLesson: clip(out.key_lesson, 300), moves, model: data.modelVersion ?? model });
   }
+  return last ?? json({ error: 'upstream', status: 0 }, 502);
 }
