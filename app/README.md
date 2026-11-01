@@ -80,6 +80,13 @@ After the first load the app works offline, and Lichess ratings re-sync when you
 
 **Supabase (optional):** create a project, run `app/supabase/schema.sql` in its SQL editor, then copy the project URL and anon key into the two `VITE_` variables (plus the service-role values if you want server-side account checks).
 
+**Sign-in is Google-only** (no emails, so Supabase's email rate limit never applies):
+1. console.cloud.google.com → create a project → **Google Auth Platform** → configure the consent screen (External; app name, support email). While it's in "Testing", add each tester's Gmail under Audience → Test users, or click **Publish app**.
+2. Clients → **Create client** → Web application. Authorised JavaScript origins: your site URL. Authorised redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`.
+3. Supabase → Authentication → Sign In / Providers → **Google** → enable, paste the Client ID and Client Secret, save.
+4. Same page → **Email** → turn it off, so nobody can trigger magic-link emails directly against the API.
+5. Authentication → URL Configuration: Site URL = your site; Redirect URLs include it (and `http://localhost:5173` for dev).
+
 Any static host also works for the app itself (build with `npm run build`, publish `dist/`; the build uses relative paths, so subfolders are fine), but the AI coach and the game pull need the `api/` functions, which only run on Vercel.
 
 ## How it works

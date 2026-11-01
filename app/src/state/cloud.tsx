@@ -17,7 +17,8 @@ interface Cloud {
   lastSyncedAt: number | null;
   /** True while a brand-new device is downloading the user's data for the first time. */
   restoring: boolean;
-  sendMagicLink: (email: string) => Promise<void>;
+  /** Redirects to the provider (Google). No email is sent, so no email rate limit applies. */
+  signInWithProvider: (provider: 'github' | 'google') => Promise<void>;
   continueWithoutAccount: () => void;
   startSignIn: () => void;
   sync: () => Promise<void>;
@@ -105,10 +106,11 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     };
   }, [userId, sync]);
 
-  const sendMagicLink = useCallback(async (email: string) => {
+  const signInWithProvider = useCallback(async (provider: 'github' | 'google') => {
     if (!supabase) throw new Error('Accounts are not set up for this app.');
-    const redirect = new URL('.', window.location.href).toString();
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirect, shouldCreateUser: true } });
+    // origin (no trailing slash) matches the redirect allow-list entry exactly, so Google never
+    // bounces to the Site URL fallback.
+    const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: window.location.origin } });
     if (error) throw error;
   }, []);
 
@@ -121,7 +123,7 @@ export function CloudProvider({ children }: { children: ReactNode }) {
     status,
     lastSyncedAt,
     restoring,
-    sendMagicLink,
+    signInWithProvider,
     continueWithoutAccount: () => { localStorage.setItem(LOCAL_ONLY, '1'); setLocalOnly(true); },
     startSignIn: () => { localStorage.removeItem(LOCAL_ONLY); setLocalOnly(false); },
     sync,

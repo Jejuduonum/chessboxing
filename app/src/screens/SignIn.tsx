@@ -1,44 +1,60 @@
 import { useEffect, useRef, useState } from 'react';
-import { BigButton, Icon, inputClass } from '../components/ui';
+import { Icon } from '../components/ui';
 import { useCloud } from '../state/cloud';
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-/** Magic-link sign-in. Shown before Welcome when the app is connected to Supabase. */
+/** Google "G" in its official four colours (Google's sign-in branding requires the multicolour mark). */
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 48 48" width="21" height="21" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+  );
+}
+
+/** OAuth returns failures in the URL: surface them once, then clean the address bar. */
+function useOauthError(setError: (m: string | null) => void) {
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const h = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const desc = q.get('error_description') ?? h.get('error_description') ?? q.get('error') ?? h.get('error');
+    if (!desc) return;
+    setError(
+      /not enabled|unsupported provider|provider is not enabled/i.test(desc)
+        ? 'Google sign-in isn’t switched on yet. Use the email link below, or enable the provider in Supabase.'
+        : /access_denied|cancelled|canceled/i.test(desc)
+          ? 'Google sign-in was cancelled. Nothing changed.'
+          : 'Couldn’t sign in with Google. Try again, or use the email link.',
+    );
+    history.replaceState(null, '', window.location.pathname);
+  }, [setError]);
+}
+
+/** Sign-in is Google-only: no emails are sent, so Supabase's email rate limit never applies. */
 export function SignIn() {
   const cloud = useCloud();
-  const [email, setEmail] = useState('');
-  const [touched, setTouched] = useState(false);
-  const [sentTo, setSentTo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const id = window.setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => window.clearTimeout(id);
-  }, [cooldown]);
-  useEffect(() => { headingRef.current?.focus(); }, [sentTo]);
+  useOauthError(setError);
+  useEffect(() => { headingRef.current?.focus(); }, []);
 
-  const invalid = !EMAIL.test(email.trim());
-  const send = async (override?: string) => {
-    const addr = (override ?? email).trim().toLowerCase();
-    setTouched(true);
-    if (!EMAIL.test(addr)) return;
+  const withGoogle = async () => {
     setBusy(true);
     setError(null);
     try {
-      await cloud.sendMagicLink(addr);
-      setSentTo(addr);
-      setCooldown(60);
+      await cloud.signInWithProvider('google');
     } catch (e) {
       const msg = e instanceof Error ? e.message : '';
-      setError(/rate|too many|seconds/i.test(msg)
-        ? 'Too many sign-in emails just now. Wait a minute, then try again.'
-        : navigator.onLine === false ? 'You’re offline. Connect to the internet to sign in.' : 'Couldn’t send the sign-in email. Check the address and try again.');
-    } finally {
+      setError(/not enabled|provider/i.test(msg)
+        ? 'Google sign-in isn’t switched on yet. Enable the Google provider in Supabase.'
+        : navigator.onLine === false
+          ? 'You’re offline. Connect to the internet to sign in.'
+          : 'Couldn’t reach Google. Try again in a moment.');
       setBusy(false);
     }
   };
@@ -50,62 +66,32 @@ export function SignIn() {
         <span className="h-2 w-7 rounded-full bg-fit" />
       </div>
 
-      {!sentTo ? (
-        <>
-          <h1 ref={headingRef} tabIndex={-1} className="mt-12 font-display text-[clamp(56px,17vw,72px)] font-bold uppercase leading-[0.9] outline-none">
-            <span className="block">Sign in</span>
-          </h1>
-          <p className="mt-4 text-[18px] leading-relaxed text-muted">
-            Back up your training and pick up on any device. We’ll email you a sign-in link — no password.
-          </p>
-          <div className="mt-8">
-            <label htmlFor="email" className="mb-1.5 block text-[15px] text-muted">Email</label>
-            <input
-              id="email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              autoCapitalize="none"
-              spellCheck={false}
-              className={inputClass}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onBlur={() => setTouched(true)}
-              onKeyDown={(e) => { if (e.key === 'Enter') void send(); }}
-              aria-invalid={touched && invalid}
-              aria-describedby={touched && invalid ? 'email-error' : error ? 'send-error' : undefined}
-              placeholder="you@example.com"
-            />
-            {touched && invalid && <p id="email-error" className="mt-1.5 text-[14px] font-medium text-warn">Enter a valid email address.</p>}
-            {error && <p id="send-error" role="alert" className="mt-2 flex items-start gap-2 text-[15px] font-medium text-warn"><Icon name="alert" size={20} /><span>{error}</span></p>}
-          </div>
-          <div className="mt-auto pt-10">
-            <BigButton onClick={() => void send()} disabled={busy}>{busy ? 'Sending…' : 'Email me a sign-in link'}</BigButton>
-            <button onClick={cloud.continueWithoutAccount} className="mt-2 min-h-[48px] w-full text-[17px] text-muted hover:text-ink">
-              Continue without an account
-            </button>
-            <p className="mt-1 text-center text-[14px] text-muted">Without an account, your data stays only on this device.</p>
-          </div>
-        </>
-      ) : (
-        <>
-          <h1 ref={headingRef} tabIndex={-1} className="mt-12 font-display text-[clamp(56px,17vw,72px)] font-bold uppercase leading-[0.9] outline-none">Check your inbox</h1>
-          <div className="mt-6 rounded-3xl bg-surface p-5" aria-live="polite">
-            <p className="flex items-center gap-3 text-[17px]">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-chess-soft text-chess-ink"><Icon name="check" size={24} /></span>
-              <span>We sent a sign-in link to <b className="break-all">{sentTo}</b>.</span>
-            </p>
-            <p className="mt-4 text-[16px] text-muted">Open it on this device to sign in. It can take a minute — check spam if it doesn’t show up.</p>
-          </div>
-          {error && <p role="alert" className="mt-3 text-[15px] font-medium text-warn">{error}</p>}
-          <div className="mt-auto pt-10">
-            <BigButton tone="surface" className="bg-raised" disabled={cooldown > 0 || busy} onClick={() => void send(sentTo)}>
-              {cooldown > 0 ? `Resend in ${cooldown}s` : busy ? 'Sending…' : 'Resend link'}
-            </BigButton>
-            <button onClick={() => { setSentTo(null); setError(null); }} className="mt-2 min-h-[48px] w-full text-[17px] text-muted hover:text-ink">Use a different email</button>
-          </div>
-        </>
-      )}
+      <h1 ref={headingRef} tabIndex={-1} className="mt-12 font-display text-[clamp(56px,17vw,72px)] font-bold uppercase leading-[0.9] outline-none">
+        <span className="block">Sign in</span>
+      </h1>
+      <p className="mt-4 text-[18px] leading-relaxed text-muted">
+        Back up your training and pick up on any device.
+      </p>
+
+      <div className="mt-8">
+        <button
+          onClick={() => void withGoogle()}
+          disabled={busy}
+          className="flex min-h-[56px] w-full items-center justify-center gap-3 rounded-2xl bg-ink text-[16px] font-semibold text-bg transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chess disabled:opacity-60"
+        >
+          <GoogleMark />
+          <span>{busy ? 'Opening Google…' : 'Continue with Google'}</span>
+        </button>
+        <p className="mt-2 text-center text-[14px] text-muted">No password, no email links. Approve once and you’re in.</p>
+        {error && <p role="alert" className="mt-3 flex items-start gap-2 text-[15px] font-medium text-warn"><Icon name="alert" size={20} /><span>{error}</span></p>}
+      </div>
+
+      <div className="mt-auto pt-10">
+        <button onClick={cloud.continueWithoutAccount} className="min-h-[48px] w-full text-[17px] text-muted hover:text-ink">
+          Continue without an account
+        </button>
+        <p className="mt-1 text-center text-[14px] text-muted">Without an account, your data stays only on this device.</p>
+      </div>
     </main>
   );
 }
