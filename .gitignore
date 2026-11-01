@@ -4,3 +4,8 @@
 .od-frames/
 .od-skills/
 *.artifact.json
+
+# Private: design source documents, content plans and screenshots stay local
+*.pdf
+content/
+Screenshot-*.png
