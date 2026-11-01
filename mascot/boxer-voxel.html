@@ -1,0 +1,282 @@
+<!doctype html>
+<!-- Chess Boxing Tracker — chess boxer pawn in voxel ("3D pixel") style.
+     The character is a real 3D block model (buildModel) rendered to isometric SVG
+     (render). Moods paint pixels onto the front of the head; turnaround views rotate
+     the model in 90° steps. Edit MAT for colours, buildModel for the shape. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chess boxer pawn · voxel style · Chess Boxing Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap" />
+  <style>
+    :root {
+      --bg: #0E0E10; --surface: #17171A; --raised: #222226; --line: #2E2E34;
+      --ink: #F2F2F0; --muted: #A1A1A8; --chess-ink: #6FA2FF; --fit-ink: #F2666A;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { background: var(--bg); color: var(--ink); font: 400 16px/1.55 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 56px 32px 96px; }
+    .top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 48px; padding-bottom: 32px; border-bottom: 1px solid var(--line); }
+    .top h1 { margin: 0; font: 700 clamp(44px, 6vw, 76px)/0.92 "Barlow Condensed", Inter, sans-serif; text-transform: uppercase; }
+    .top h1 span { display: block; color: var(--fit-ink); }
+    .top p { margin: 0; max-width: 56ch; color: var(--muted); }
+
+    section { margin-top: 40px; }
+    h2 { margin: 0 0 16px; font: 700 28px/1 "Barlow Condensed", sans-serif; text-transform: uppercase; letter-spacing: 0.02em; }
+    .note { margin: -8px 0 16px; color: var(--muted); max-width: 70ch; font-size: 15px; }
+
+    .hero { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 24px; align-items: stretch; }
+    .panel { background: var(--surface); border-radius: 24px; padding: 24px; }
+    .stage { display: flex; align-items: center; justify-content: center; min-height: 420px; }
+    .stage svg { width: min(100%, 380px); height: auto; display: block; }
+    .specs { display: flex; flex-direction: column; gap: 18px; }
+    .specs h3 { margin: 0; font: 700 22px/1.1 "Barlow Condensed", sans-serif; text-transform: uppercase; }
+    .specs p { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+    .swatches { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+    .swatches div { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+    .swatches i { display: block; width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); }
+
+    .row { display: grid; gap: 16px; }
+    .row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .row.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    figure { margin: 0; background: var(--surface); border-radius: 20px; padding: 20px 12px 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    figure svg { width: min(100%, 200px); height: auto; display: block; }
+    figcaption { text-align: center; }
+    figcaption b { display: block; font-weight: 600; }
+    figcaption span { display: block; font-size: 14px; color: var(--muted); }
+
+    .small { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-end; }
+    .small figure { background: none; padding: 0; }
+    .tile { width: 72px; height: 72px; border-radius: 18px; background: var(--surface); display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px var(--line); }
+    .tile svg { width: 56px; }
+    .avatar { border-radius: 50%; background: var(--raised); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .av40 { width: 40px; height: 40px; } .av40 svg { width: 32px; }
+    .av24 { width: 24px; height: 24px; } .av24 svg { width: 19px; }
+    .compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .compare figure svg { width: min(100%, 220px); }
+
+    @media (max-width: 860px) {
+      .hero, .compare { grid-template-columns: minmax(0, 1fr); }
+      .row.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px) {
+      .wrap { padding: 32px 16px 64px; }
+      .row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+      .stage { min-height: 300px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <h1>Chess boxer<span>in voxels</span></h1>
+      <p>The boxer pawn rebuilt from cubes as a real 3D block model. Each cube is roughly 1/16 of the pawn’s height. The face is painted onto the front of the head, the way voxel games do it.</p>
+    </header>
+
+    <section aria-labelledby="hero-title">
+      <h2 id="hero-title" class="sr-only" hidden>Hero</h2>
+      <div class="hero">
+        <div class="panel stage" id="hero"></div>
+        <div class="panel specs">
+          <div>
+            <h3>The build</h3>
+            <p>Chunky ivory body on a two-step base, red gloves with white cuffs held up in guard, and a red headband whose tails stick out behind the head.</p>
+          </div>
+          <div>
+            <h3>Materials</h3>
+            <div class="swatches" id="swatches"></div>
+          </div>
+          <div>
+            <h3>Lighting</h3>
+            <p>One light from the top-left: tops brightest, front faces mid-tone, side faces darkest. Every colour keeps that three-step rule, so later pieces will match.</p>
+          </div>
+          <div>
+            <h3>Block size</h3>
+            <p>17 cubes tall. Smaller cubes give a smoother, more detailed character; bigger ones look more retro and read better at tiny sizes.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="moods-title">
+      <h2 id="moods-title">Moods</h2>
+      <p class="note">Only the painted face pixels change, so moods can swap instantly in the app.</p>
+      <div class="row three" id="moods"></div>
+    </section>
+
+    <section aria-labelledby="turn-title">
+      <h2 id="turn-title">Turnaround</h2>
+      <p class="note">The same model rotated 90° at a time — the headband tails and glove cuffs show how it holds up as a real 3D character.</p>
+      <div class="row four" id="turn"></div>
+    </section>
+
+    <section aria-labelledby="small-title">
+      <h2 id="small-title">Small sizes</h2>
+      <div class="small" id="small"></div>
+    </section>
+
+    <section aria-labelledby="cmp-title">
+      <h2 id="cmp-title">Next to the original</h2>
+      <div class="compare" id="compare"></div>
+    </section>
+  </main>
+
+  <script>
+  /* ================= Materials (top / front / side shading derived) ================= */
+  const MAT = {
+    ivory: { hex: '#EDEBE6', name: 'Ivory body' },
+    shade: { hex: '#C9C5BC', name: 'Collar & base' },
+    red:   { hex: '#E5484D', name: 'Gloves & headband' },
+    cuff:  { hex: '#FAFAF8', name: 'Glove cuffs' },
+    ink:   { hex: '#101012', name: 'Face' },
+    blush: { hex: '#FF9AA8', name: 'Blush' },
+    shine: { hex: '#FFFFFF', name: 'Eye shine' },
+    sweat: { hex: '#8EC5FF', name: 'Sweat drop' },
+  };
+  const tone = (hex, f) => {
+    const n = parseInt(hex.slice(1), 16);
+    const ch = (v) => Math.max(0, Math.min(255, Math.round(f >= 1 ? v + (255 - v) * (f - 1) : v * f)));
+    return `rgb(${ch(n >> 16)},${ch((n >> 8) & 255)},${ch(n & 255)})`;
+  };
+  const SHADE = { top: 1.14, front: 1.0, side: 0.78 };
+
+  /* ================= Model =================
+     Axes: x = left→right, y = back→front (face is on +y), z = up. Centre column at 7. */
+  function buildModel(mood) {
+    const vox = new Map();
+    const key = (x, y, z) => `${x},${y},${z}`;
+    const set = (x, y, z, m) => vox.set(key(x, y, z), { x, y, z, m, paint: null });
+    const C = 7;
+    const disc = (z, r, m) => {
+      for (let x = -2; x < 16; x++) for (let y = -2; y < 16; y++)
+        if ((x + 0.5 - C) ** 2 + (y + 0.5 - C) ** 2 <= r * r) set(x, y, z, m);
+    };
+    disc(0, 6.3, 'shade'); disc(1, 6.3, 'shade'); disc(2, 5.4, 'shade');
+    [4.4, 4.0, 3.6, 3.2].forEach((r, i) => disc(3 + i, r, 'ivory'));
+    disc(7, 4.6, 'shade');
+    // head: 10×10×9 block with bevelled edges, so the face sits on one flat front plane
+    const HX = [2, 11], HY = [2, 11], HZ = [8, 16];
+    const atEdge = (v, [lo, hi]) => v === lo || v === hi;
+    for (let x = HX[0]; x <= HX[1]; x++) for (let y = HY[0]; y <= HY[1]; y++) for (let z = HZ[0]; z <= HZ[1]; z++) {
+      const edges = [atEdge(x, HX), atEdge(y, HY), atEdge(z, HZ)].filter(Boolean).length;
+      if (edges < 2) set(x, y, z, 'ivory');
+    }
+    // headband: outer shell of the head at z 14–15
+    for (const v of vox.values()) {
+      if (v.z < 14 || v.z > 15 || v.m !== 'ivory') continue;
+      const exposed = [[1,0],[-1,0],[0,1],[0,-1]].some(([dx, dy]) => !vox.has(key(v.x + dx, v.y + dy, v.z)));
+      if (exposed) v.m = 'red';
+    }
+    // headband tails out the back (−y)
+    [[6,1,15],[7,1,15],[6,0,14],[7,0,15],[6,-1,13],[7,-1,14],[7,-2,13],[6,-2,12]].forEach(([x, y, z]) => set(x, y, z, 'red'));
+    // gloves in guard: 3 wide × 4 deep × 3 tall, white cuff on the inner column
+    for (const [x0, cuffX] of [[0, 2], [11, 11]])
+      for (let x = x0; x < x0 + 3; x++) for (let y = 8; y < 12; y++) for (let z = 4; z < 7; z++)
+        set(x, y, z, x === cuffX && z < 6 && y < 10 ? 'cuff' : 'red');
+
+    // face pixels painted on the front-most head voxel at (x, z)
+    // Face area on the flat front plane: x 3–10, z 9–13 (headband above). Mirror pairs: 4↔9, 5↔8, 3↔10.
+    const FACES = {
+      // 2×2 eyes with a shine pixel, wide smile, blush
+      happy: [[4,11,'ink'],[5,11,'ink'],[5,12,'ink'],[4,12,'shine'],[8,11,'ink'],[9,11,'ink'],[9,12,'ink'],[8,12,'shine'],
+              [4,10,'ink'],[5,9,'ink'],[6,9,'ink'],[7,9,'ink'],[8,9,'ink'],[9,10,'ink'],[3,10,'blush'],[10,10,'blush']],
+      // flat eyes under brows angled down to the centre, set mouth
+      determined: [[4,11,'ink'],[5,11,'ink'],[8,11,'ink'],[9,11,'ink'],[3,13,'ink'],[4,13,'ink'],[5,12,'ink'],[10,13,'ink'],[9,13,'ink'],[8,12,'ink'],
+              [5,9,'ink'],[6,9,'ink'],[7,9,'ink'],[8,9,'ink'],[3,10,'blush'],[10,10,'blush']],
+      // droopy closed eyes, small "o" mouth (+ sweat drop cubes)
+      tired: [[3,12,'ink'],[4,11,'ink'],[5,11,'ink'],[10,12,'ink'],[9,11,'ink'],[8,11,'ink'],[6,9,'ink'],[7,9,'ink'],
+              [3,10,'blush'],[10,10,'blush']],
+    };
+    for (const [x, z, m] of FACES[mood]) {
+      let front = null;
+      for (const v of vox.values()) if (v.x === x && v.z === z && v.z >= 8 && (!front || v.y > front.y)) front = v;
+      if (front) front.paint = { m, dir: [0, 1, 0] };
+    }
+    if (mood === 'tired') { set(12, 11, 17, 'sweat'); set(12, 11, 16, 'sweat'); }
+    return [...vox.values()];
+  }
+
+  /* ================= Isometric renderer =================
+     Camera looks from +x,+y,+z. Visible faces: top (+z), front-left (+y), front-right (+x).
+     rot = number of 90° turns around the vertical axis. */
+  function render(mood, rot = 0, label = 'Chess boxer pawn') {
+    const src = buildModel(mood);
+    const turn = ([x, y, z]) => { let a = x - 7, b = y - 7; for (let i = 0; i < rot; i++) [a, b] = [-b, a]; return [a, b, z]; };
+    const vox = src.map((v) => {
+      const [x, y, z] = turn([v.x + 0.5, v.y + 0.5, v.z]);
+      const paint = v.paint ? { m: v.paint.m, dir: turn([v.paint.dir[0] + 7, v.paint.dir[1] + 7, 0]).slice(0, 2).map(Math.round) } : null;
+      return { x: Math.round(x - 0.5), y: Math.round(y - 0.5), z, m: v.m, paint };
+    });
+    const occ = new Set(vox.map((v) => `${v.x},${v.y},${v.z}`));
+    const has = (x, y, z) => occ.has(`${x},${y},${z}`);
+    const S = 10, cx = Math.cos(Math.PI / 6) * S, sy = Math.sin(Math.PI / 6) * S;
+    const P = (x, y, z) => [(x - y) * cx, (x + y) * sy - z * S];
+    vox.sort((a, b) => (a.x + a.y + a.z) - (b.x + b.y + b.z) || a.z - b.z);
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    const polys = [];
+    const poly = (pts, fill) => {
+      pts.forEach(([px, py]) => { minX = Math.min(minX, px); maxX = Math.max(maxX, px); minY = Math.min(minY, py); maxY = Math.max(maxY, py); });
+      polys.push(`<path d="M${pts.map((p) => p.map((n) => n.toFixed(1)).join(' ')).join('L')}Z" fill="${fill}" stroke="${fill}" stroke-width="0.6" stroke-linejoin="round"/>`);
+    };
+    const colour = (v, dir, shade) => {
+      const isPaint = v.paint && v.paint.dir[0] === dir[0] && v.paint.dir[1] === dir[1];
+      return tone(MAT[isPaint ? v.paint.m : v.m].hex, SHADE[shade]);
+    };
+    for (const v of vox) {
+      const { x, y, z } = v;
+      if (!has(x, y, z + 1)) poly([P(x, y, z + 1), P(x + 1, y, z + 1), P(x + 1, y + 1, z + 1), P(x, y + 1, z + 1)], colour(v, [0, 0], 'top'));
+      if (!has(x, y + 1, z)) poly([P(x, y + 1, z + 1), P(x + 1, y + 1, z + 1), P(x + 1, y + 1, z), P(x, y + 1, z)], colour(v, [0, 1], 'front'));
+      if (!has(x + 1, y, z)) poly([P(x + 1, y, z + 1), P(x + 1, y + 1, z + 1), P(x + 1, y + 1, z), P(x + 1, y, z)], colour(v, [1, 0], 'side'));
+    }
+    // soft ground shadow under the base
+    const [gx, gy] = P(1, 1, 0);
+    const shadow = `<ellipse cx="${gx.toFixed(1)}" cy="${(maxY + 4).toFixed(1)}" rx="${((maxX - minX) * 0.42).toFixed(1)}" ry="7" fill="#000" opacity="0.4"/>`;
+    const pad = 8;
+    const vb = [minX - pad, minY - pad, maxX - minX + pad * 2, maxY - minY + pad * 2 + 10].map((n) => n.toFixed(1)).join(' ');
+    return `<svg viewBox="${vb}" role="img" aria-label="${label}" xmlns="http://www.w3.org/2000/svg">${shadow}${polys.join('')}</svg>`;
+  }
+
+  /* ================= Original flat boxer (for comparison) ================= */
+  function flatBoxer() {
+    const glove = (x, f) => `<g transform="translate(${x} 142) scale(${f} 1)"><rect x="-10" y="10" width="20" height="10" rx="3" fill="#F2F2F0"/><path d="M-17 2a17 17 0 0 1 34 0v4a14 14 0 0 1-14 14h-6A14 14 0 0 1-17 6z" fill="#E5484D"/><path d="M5 -4a8 8 0 0 1 10 2" fill="none" stroke="#B8343A" stroke-width="3" stroke-linecap="round"/></g>`;
+    return `<svg viewBox="0 0 200 220" role="img" aria-label="Original flat chess boxer pawn" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="100" cy="206" rx="64" ry="6" fill="#000" opacity="0.35"/>
+      <path d="M40 184a14 14 0 0 1 14-14h92a14 14 0 0 1 14 14a14 14 0 0 1-14 14H54a14 14 0 0 1-14-14z" fill="#CFCBC2"/>
+      <path d="M74 116C74 140 64 158 55 172H145C136 158 126 140 126 116Z" fill="#EDEBE6"/>
+      <path d="M58 111a7 7 0 0 1 7-7h70a7 7 0 0 1 7 7a7 7 0 0 1-7 7H65a7 7 0 0 1-7-7z" fill="#CFCBC2"/>
+      <circle cx="100" cy="64" r="40" fill="#EDEBE6"/>
+      <path d="M61 46Q100 30 139 46L137 58Q100 44 63 58Z" fill="#E5484D"/>
+      <path d="M136 50Q156 46 162 58Q150 56 146 62Q144 54 136 56Z" fill="#B8343A"/>
+      <path d="M136 52Q154 60 156 74Q146 66 140 68Q142 60 134 58Z" fill="#E5484D"/>
+      ${glove(52, 1)}${glove(148, -1)}
+      <ellipse cx="86" cy="62" rx="5.5" ry="7" fill="#0E0E10"/><circle cx="84.4" cy="59" r="2" fill="#fff"/>
+      <ellipse cx="114" cy="62" rx="5.5" ry="7" fill="#0E0E10"/><circle cx="112.4" cy="59" r="2" fill="#fff"/>
+      <ellipse cx="76" cy="77" rx="7.5" ry="4" fill="#FF9AA8" opacity="0.75"/><ellipse cx="124" cy="77" rx="7.5" ry="4" fill="#FF9AA8" opacity="0.75"/>
+      <path d="M91 76Q100 89 109 76Q100 80 91 76Z" fill="#0E0E10" stroke="#0E0E10" stroke-width="2" stroke-linejoin="round"/>
+    </svg>`;
+  }
+
+  /* ================= Page ================= */
+  const $ = (id) => document.getElementById(id);
+  $('hero').innerHTML = render('happy', 0, 'Voxel chess boxer pawn, happy, front three-quarter view');
+  $('swatches').innerHTML = ['ivory', 'shade', 'red', 'cuff', 'ink', 'blush']
+    .map((k) => `<div><i style="background:${MAT[k].hex}"></i>${MAT[k].name}</div>`).join('');
+  $('moods').innerHTML = [['happy', 'Happy', 'On or ahead of the target line'], ['determined', 'Determined', 'Behind target, still fighting'], ['tired', 'Tired', 'No session logged in a while']]
+    .map(([m, t, d]) => `<figure>${render(m, 0, `Voxel boxer pawn, ${t.toLowerCase()}`)}<figcaption><b>${t}</b><span>${d}</span></figcaption></figure>`).join('');
+  $('turn').innerHTML = [[0, 'Front left'], [1, 'Back left'], [2, 'Back right'], [3, 'Front right']]
+    .map(([r, t]) => `<figure>${render('happy', r, `Voxel boxer pawn, ${t.toLowerCase()} view`)}<figcaption><b>${t}</b></figcaption></figure>`).join('');
+  const smallSvg = render('happy', 0, 'Voxel boxer pawn, small');
+  $('small').innerHTML = `
+    <figure><div class="tile">${smallSvg}</div><figcaption><span>App icon</span></figcaption></figure>
+    <figure><div class="avatar av40">${smallSvg}</div><figcaption><span>40 px</span></figcaption></figure>
+    <figure><div class="avatar av24">${smallSvg}</div><figcaption><span>24 px</span></figcaption></figure>`;
+  $('compare').innerHTML = `
+    <figure>${flatBoxer()}<figcaption><b>Original</b><span>Flat vector</span></figcaption></figure>
+    <figure>${render('happy', 0, 'Voxel boxer pawn')}<figcaption><b>Voxel</b><span>3D pixel</span></figcaption></figure>`;
+  </script>
+</body>
+</html>

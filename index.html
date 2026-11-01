@@ -1,0 +1,277 @@
+<!doctype html>
+<!-- Chess Boxing Tracker — v1 design mocks review board. Each phone is a live iframe of a mock page in screens/. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chess Boxing Tracker · v1 design mocks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" />
+  <style>
+    :root {
+      --phone-screen-width: 375px;
+      --phone-screen-height: 812px;
+      --phone-bezel: 10px;
+      --phone-outer-radius: 52px;
+      --phone-screen-radius: 42px;
+      --phone-screen-bg: #0E0E10;
+    }
+    :root {
+      --bg: #0E0E10; --surface: #17171A; --line: #2E2E34; --ink: #F2F2F0; --muted: #A1A1A8;
+      --chess: #6FA2FF; --fit: #F2666A;
+      --scale: 0.62;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { background: var(--bg); color: var(--ink); font: 400 16px/1.5 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    a:focus-visible { outline: 2px solid var(--chess); outline-offset: 4px; border-radius: 6px; }
+    .wrap { max-width: 1440px; margin: 0 auto; padding: 48px 32px 80px; }
+    .top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 40px; padding-bottom: 32px; border-bottom: 1px solid var(--line); margin-bottom: 40px; }
+    .top h1 { margin: 0; font: 700 clamp(44px, 6vw, 72px)/0.95 "Barlow Condensed", Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.01em; }
+    .top h1 .c { color: var(--chess); } .top h1 .f { color: var(--fit); }
+    .top p { margin: 0; color: var(--muted); max-width: 52ch; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 12px; color: var(--muted); font-size: 14px; }
+    .meta b { color: var(--ink); font-weight: 600; }
+    section { margin-bottom: 48px; }
+    h2 { margin: 0 0 20px; font: 600 24px/1.1 "Barlow Condensed", Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+    .row { display: flex; flex-wrap: wrap; gap: 32px 28px; }
+    figure { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+    .frame-box {
+      width: calc((var(--phone-screen-width) + var(--phone-bezel) * 2) * var(--scale));
+      height: calc((var(--phone-screen-height) + var(--phone-bezel) * 2) * var(--scale));
+    }
+    .frame-box > .phone-frame { transform: scale(var(--scale)); transform-origin: top left; }
+    .phone-frame {
+      position: relative;
+      width: calc(var(--phone-screen-width, 390px) + var(--phone-bezel, 10px) * 2);
+      height: calc(var(--phone-screen-height, 844px) + var(--phone-bezel, 10px) * 2);
+      padding: var(--phone-bezel, 10px);
+      border-radius: var(--phone-outer-radius, 52px);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.2), transparent 17%),
+        linear-gradient(160deg, #3f4146 0%, #202227 48%, #0b0c0f 100%);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.13),
+        inset 0 0 0 2px rgba(0,0,0,.85),
+        0 32px 68px -20px rgba(10,12,16,.52),
+        0 10px 24px -10px rgba(10,12,16,.32);
+      isolation: isolate;
+    }
+
+    .phone-frame::before,
+    .phone-frame::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      top: 96px;
+      bottom: 96px;
+      width: 2px;
+      background: linear-gradient(to bottom, transparent, rgba(255,255,255,.13) 16%, transparent 30%, transparent 72%, rgba(255,255,255,.07) 88%, transparent);
+    }
+    .phone-frame::before { left: 0; }
+    .phone-frame::after { right: 0; }
+
+    .hardware-button {
+      position: absolute;
+      width: 4px;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #08090b, #2a2d33 60%, #08090b);
+      box-shadow: inset 0 1px rgba(255,255,255,.08);
+    }
+    .hardware-button.volume { left: -3px; top: 222px; height: 86px; }
+    .hardware-button.power { right: -3px; top: 270px; height: 82px; }
+
+    .phone-screen {
+      position: relative;
+      width: var(--phone-screen-width, 390px);
+      height: var(--phone-screen-height, 844px);
+      overflow: hidden;
+      border-radius: var(--phone-screen-radius, 42px);
+      background: var(--phone-screen-bg, #f8f8f9);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+    }
+    .hardware-button { position: absolute; width: 4px; border-radius: 3px; background: linear-gradient(90deg, #08090b, #2a2d33 60%, #08090b); }
+    .hardware-button.volume { left: -3px; top: 222px; height: 86px; }
+    .hardware-button.power { right: -3px; top: 270px; height: 82px; }
+    .phone-screen iframe { display: block; width: 100%; height: 100%; border: 0; background: var(--phone-screen-bg); }
+    figcaption { display: grid; gap: 2px; max-width: calc((var(--phone-screen-width) + var(--phone-bezel) * 2) * var(--scale)); }
+    figcaption a { display: block; font-weight: 600; text-decoration: none; }
+    figcaption a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    figcaption span { display: block; font-size: 14px; color: var(--muted); }
+    @media (max-width: 640px) { :root { --scale: 0.8; } .wrap { padding: 32px 16px 64px; } .row { justify-content: center; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <div>
+        <h1><span class="c">Chess</span> <span class="f">Boxing</span><br>Tracker · v1 mocks</h1>
+        <div class="meta"><span><b>13</b> frames</span><span><b>375px</b> wide</span><span>Dark by default, one light Home</span><span>Sample data: day 21 of 56 (Fri 20 Nov 2026)</span></div>
+      </div>
+      <p>Design mocks for approval before the build. Every phone is live: tap tabs, chips, the + button and the keypad. Click a title to open that screen full size.</p>
+    </header>
+    <section aria-labelledby="g-onboarding">
+      <h2 id="g-onboarding">Onboarding</h2>
+      <div class="row">
+        <figure>
+          <div class="frame-box">
+            <div class="phone-frame">
+              <span class="hardware-button volume" aria-hidden="true"></span>
+              <span class="hardware-button power" aria-hidden="true"></span>
+              <div class="phone-screen"><iframe src="screens/setup.html" title="First-launch setup mock" loading="lazy"></iframe></div>
+            </div>
+          </div>
+          <figcaption><a href="screens/setup.html" target="_blank" rel="noopener">First-launch setup ↗</a><span>Username, weights, target date</span></figcaption>
+        </figure>
+      </div>
+    </section>
+    <section aria-labelledby="g-home">
+      <h2 id="g-home">Home</h2>
+      <div class="row">
+        <figure>
+          <div class="frame-box">
+            <div class="phone-frame">
+              <span class="hardware-button volume" aria-hidden="true"></span>
+              <span class="hardware-button power" aria-hidden="true"></span>
+              <div class="phone-screen"><iframe src="screens/home.html" title="Home mock" loading="lazy"></iframe></div>
+            </div>
+          </div>
+          <figcaption><a href="screens/home.html" target="_blank" rel="noopener">Home ↗</a><span>Countdown, goal cards, this week</span></figcaption>
+        </figure>
+        <figure>
+          <div class="frame-box">
+            <div class="phone-frame">
+              <span class="hardware-button volume" aria-hidden="true"></span>
+              <span class="hardware-button power" aria-hidden="true"></span>
+              <div class="phone-screen"><iframe src="screens/home.html#quick-add" title="Home · Quick add mock" loading="lazy"></iframe></div>
+            </div>
+          </div>
+          <figcaption><a href="screens/home.html#quick-add" target="_blank" rel="noopener">Home · Quick add ↗</a><span>Bottom + opens Weight / Session</span></figcaption>
+        </figure>
+        <figure>
+          <div class="frame-box">
+            <div class="phone-frame">
+              <span class="hardware-button volume" aria-hidden="true"></span>
+              <span class="hardware-button power" aria-hidden="true"></span>
+              <div class="phone-screen"><iframe src="screens/home.html#weight" title="Home · Log weight mock" loading="lazy"></iframe></div>
+            </div>
+          </div>
+          <figcaption><a href="screens/home.html#weight" target="_blank" rel="noopener">Home · Log weight ↗</a><span>Keypad, prefilled with last entry</span></figcaption>
+        </figure>
+        <figure>
+          <div class="frame-box">
+            <div class="phone-frame">
+              <span class="hardware-button volume" aria-hidden="true"></span>
+              <span class="hardware-button power" aria-hidden="true"></span>
+              <div class="phone-screen"><iframe src="screens/home-empty.html" title="Home · Empty mock" loading="lazy"></iframe></div>
+            </div>
+          </div>
+          <figcaption><a href="screens/home-empty.html" target="_blank" rel="noopener">Home · Empty ↗</a><span>Day 1, right after setup</span></figcaption>
+        </figure>
+        <figure>
+          <div class="frame-box">
+            <div class="phone-frame">
+              <span class="hardware-button volume" aria-hidden="true"></span>
+              <span class="hardware-button power" aria-hidden="true"></span>
+              <div class="phone-screen"><iframe src="screens/home-light.html" title="Home · Light mode mock" loading="lazy"></iframe></div>
+            </div>
+          </div>
+          <figcaption><a href="screens/home-light.html" target="_blank" rel="noopener">Home · Light mode ↗</a><span>Same tokens, light theme</span></figcaption>
+        </figure>
+      </div>
+    </section>
+    <section aria-labelledby="g-chess">
+      <h2 id="g-chess">Chess</h2>
+      <div class="row">
+        <figure>
+          <div class="frame-box">
+            <div class="phone-frame">
+              <span class="hardware-button volume" aria-hidden="true"></span>
+              <span class="hardware-button power" aria-hidden="true"></span>
+              <div class="phone-screen"><iframe src="screens/chess.html" title="Chess mock" loading="lazy"></iframe></div>
+            </div>
+          </div>
+          <figcaption><a href="screens/chess.html" target="_blank" rel="noopener">Chess ↗</a><span>Rating vs target, time-control switcher</span></figcaption>
+        </figure>
+      </div>
+    </section>
+    <section aria-labelledby="g-weight">
+      <h2 id="g-weight">Weight</h2>
+      <div class="row">
+        <figure>
+          <div class="frame-box">
+            <div class="phone-frame">
+              <span class="hardware-button volume" aria-hidden="true"></span>
+              <span class="hardware-button power" aria-hidden="true"></span>
+              <div class="phone-screen"><iframe src="screens/weight.html" title="Weight mock" loading="lazy"></iframe></div>
+            </div>
+          </div>
+          <figcaption><a href="screens/weight.html" target="_blank" rel="noopener">Weight ↗</a><span>Moving average, rates, projection</span></figcaption>
+        </figure>
+        <figure>
+          <div class="frame-box">
+            <div class="phone-frame">
+              <span class="hardware-button volume" aria-hidden="true"></span>
+              <span class="hardware-button power" aria-hidden="true"></span>
+              <div class="phone-screen"><iframe src="screens/weight-empty.html" title="Weight · Empty mock" loading="lazy"></iframe></div>
+            </div>
+          </div>
+          <figcaption><a href="screens/weight-empty.html" target="_blank" rel="noopener">Weight · Empty ↗</a><span>Before 3 entries</span></figcaption>
+        </figure>
+      </div>
+    </section>
+    <section aria-labelledby="g-log">
+      <h2 id="g-log">Log</h2>
+      <div class="row">
+        <figure>
+          <div class="frame-box">
+            <div class="phone-frame">
+              <span class="hardware-button volume" aria-hidden="true"></span>
+              <span class="hardware-button power" aria-hidden="true"></span>
+              <div class="phone-screen"><iframe src="screens/log-form.html" title="Log · New session mock" loading="lazy"></iframe></div>
+            </div>
+          </div>
+          <figcaption><a href="screens/log-form.html" target="_blank" rel="noopener">Log · New session ↗</a><span>Chips for type, duration, intensity</span></figcaption>
+        </figure>
+        <figure>
+          <div class="frame-box">
+            <div class="phone-frame">
+              <span class="hardware-button volume" aria-hidden="true"></span>
+              <span class="hardware-button power" aria-hidden="true"></span>
+              <div class="phone-screen"><iframe src="screens/log-form.html#saved" title="Log · Saved mock" loading="lazy"></iframe></div>
+            </div>
+          </div>
+          <figcaption><a href="screens/log-form.html#saved" target="_blank" rel="noopener">Log · Saved ↗</a><span>Confirmation toast with Undo</span></figcaption>
+        </figure>
+        <figure>
+          <div class="frame-box">
+            <div class="phone-frame">
+              <span class="hardware-button volume" aria-hidden="true"></span>
+              <span class="hardware-button power" aria-hidden="true"></span>
+              <div class="phone-screen"><iframe src="screens/log.html" title="Log · History mock" loading="lazy"></iframe></div>
+            </div>
+          </div>
+          <figcaption><a href="screens/log.html" target="_blank" rel="noopener">Log · History ↗</a><span>Grouped by week, filters</span></figcaption>
+        </figure>
+      </div>
+    </section>
+    <section aria-labelledby="g-settings">
+      <h2 id="g-settings">Settings</h2>
+      <div class="row">
+        <figure>
+          <div class="frame-box">
+            <div class="phone-frame">
+              <span class="hardware-button volume" aria-hidden="true"></span>
+              <span class="hardware-button power" aria-hidden="true"></span>
+              <div class="phone-screen"><iframe src="screens/settings.html" title="Settings mock" loading="lazy"></iframe></div>
+            </div>
+          </div>
+          <figcaption><a href="screens/settings.html" target="_blank" rel="noopener">Settings ↗</a><span>Goals, Lichess, units, backup, reset</span></figcaption>
+        </figure>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

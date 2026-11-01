@@ -1,0 +1,1076 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Database schema · Chess Boxing Tracker</title>
+<meta name="description" content="Entity-relationship diagram of the Chess Boxing Tracker's Supabase schema: accounts, goals, weigh-ins, sessions and game reviews." />
+<meta name="color-scheme" content="dark light" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* ---------- Tokens (shared with the app) ---------- */
+:root,
+:root[data-theme='dark'] {
+  --bg: #0e0e10;
+  --surface: #1a1a1d;
+  --raised: #222226;
+  --line: #2f2f34;
+  --line-soft: #26262b;
+  --ink: #f2f2f0;
+  --muted: #a1a1a9;
+  --target: #8b8b93;
+  --chess: #4c8dff;
+  --chess-soft: rgba(76, 141, 255, 0.16);
+  --fit: #e5484d;
+  --fit-soft: rgba(229, 72, 77, 0.16);
+  --warn: #f5a524;
+  --pk-ink: #8fb8ff;
+  --pk-bg: rgba(76, 141, 255, 0.18);
+  --pk-line: rgba(76, 141, 255, 0.38);
+  --fk-ink: #f0b45c;
+  --fk-bg: rgba(245, 165, 36, 0.14);
+  --fk-line: rgba(245, 165, 36, 0.32);
+  --wire: #6a6a73;
+  --code-bg: rgba(255, 255, 255, 0.05);
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+:root[data-theme='light'] {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --raised: #eceef2;
+  --line: #d8dae0;
+  --line-soft: #e7e8ed;
+  --ink: #111113;
+  --muted: #565961;
+  --target: #6f727a;
+  --chess: #2f6fe0;
+  --chess-soft: rgba(47, 111, 224, 0.12);
+  --fit: #c4262c;
+  --fit-soft: rgba(196, 38, 44, 0.1);
+  --warn: #8a4b00;
+  --pk-ink: #1c5ad0;
+  --pk-bg: rgba(29, 95, 214, 0.1);
+  --pk-line: rgba(29, 95, 214, 0.28);
+  --fk-ink: #8a4b00;
+  --fk-bg: rgba(160, 79, 0, 0.09);
+  --fk-line: rgba(160, 79, 0, 0.26);
+  --wire: #85888f;
+  --code-bg: rgba(17, 17, 19, 0.05);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+html { background: var(--bg); }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "tnum" 1;
+}
+
+code, .mono { font-family: var(--mono); }
+
+.shell {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: clamp(28px, 4vw, 56px) clamp(20px, 4vw, 48px) 72px;
+}
+
+/* ---------- Header ---------- */
+.eyebrow {
+  margin: 0 0 14px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.eyebrow span { color: var(--chess); }
+
+h1 {
+  margin: 0;
+  font-family: "Barlow Condensed", Inter, sans-serif;
+  font-weight: 700;
+  font-size: clamp(46px, 6.6vw, 82px);
+  line-height: 0.92;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
+}
+
+.lede {
+  margin: 18px 0 0;
+  max-width: 64ch;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.lede code {
+  font-size: 0.92em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: var(--ink);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.facts li {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.facts li b { color: var(--ink); font-weight: 600; }
+
+/* ---------- Toolbar ---------- */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin: 32px 0 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.find {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 280px;
+  min-width: 0;
+  padding: 0 12px;
+  height: 42px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.find:focus-within { border-color: var(--chess); box-shadow: 0 0 0 3px var(--chess-soft); }
+.find .flabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--target);
+  white-space: nowrap;
+}
+.find input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14.5px;
+}
+.find input::placeholder { color: var(--target); }
+
+.bar-actions { display: flex; gap: 8px; margin-left: auto; }
+
+.tbutton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+.tbutton:hover { border-color: var(--target); }
+.tbutton:focus-visible { outline: 2px solid var(--chess); outline-offset: 2px; }
+.tbutton[aria-pressed="true"] { border-color: var(--pk-line); background: var(--pk-bg); color: var(--pk-ink); }
+.tbutton .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  background: transparent;
+}
+.tbutton[aria-pressed="true"] .dot { background: currentColor; }
+
+.status {
+  min-height: 20px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.status:empty { display: none; }
+
+/* ---------- Diagram ---------- */
+.diagram {
+  position: relative;
+  margin-top: 28px;
+}
+
+.canvas {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: clamp(120px, 15vw, 240px);
+  row-gap: 40px;
+  align-items: start;
+}
+
+.hub {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+}
+.hub .card { width: min(560px, 100%); }
+
+.col { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+.col-left { grid-column: 1; }
+.col-right { grid-column: 2; }
+
+#wires {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
+}
+#wires .wire { fill: none; stroke: var(--wire); stroke-width: 1.5; stroke-linecap: round; }
+#wires .wire.stub, #wires .wire.bus { transition: stroke 180ms ease, opacity 180ms ease; }
+#wires .wire-dot { fill: var(--wire); }
+#wires .wire-hot { stroke: var(--chess); stroke-width: 2; }
+#wires .mk { fill: none; stroke: var(--wire); stroke-width: 1.4; stroke-linecap: round; }
+#wires .mk-hot { fill: none; stroke: var(--chess); stroke-width: 1.6; stroke-linecap: round; }
+#wires circle.wire-dot.wire-hot { fill: var(--chess); }
+
+.canvas.has-hot #wires .wire:not(.wire-hot) { opacity: 0.16; }
+
+/* ---------- Table cards ---------- */
+.card {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: opacity 180ms ease, border-color 180ms ease;
+}
+.card:hover { border-color: var(--target); }
+.card:focus-visible { outline: 2px solid var(--chess); outline-offset: 3px; }
+.card.hot { border-color: var(--chess); }
+.canvas.has-hot .card:not(.hot) { opacity: 0.32; }
+.card.nomatch { opacity: 0.4; }
+
+.card header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px 11px;
+  border-bottom: 1px solid var(--line);
+  background: var(--raised);
+  border-radius: 13px 13px 0 0;
+}
+.tname {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.tag {
+  margin-left: auto;
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 5px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  white-space: nowrap;
+}
+.card.managed { border-style: dashed; }
+.card.managed header { background: transparent; }
+.card.managed .tag { color: var(--chess); border-color: var(--pk-line); background: var(--pk-bg); }
+
+.cols { padding: 6px 0; }
+
+.r {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: 10px;
+  align-items: baseline;
+  padding: 4px 14px;
+  border-radius: 4px;
+}
+.r + .r { box-shadow: inset 0 1px 0 var(--line-soft); }
+.r .f {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  min-width: 0;
+}
+.cn {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.note {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.bg { display: inline-flex; gap: 4px; flex: none; }
+.b {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.5;
+}
+.b.pk { color: var(--pk-ink); background: var(--pk-bg); border: 1px solid var(--pk-line); }
+.b.fk { color: var(--fk-ink); background: var(--fk-bg); border: 1px solid var(--fk-line); }
+.b.uq { color: var(--muted); border: 1px solid var(--line); }
+.ct {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--target);
+  white-space: nowrap;
+  text-align: right;
+}
+.sdot {
+  display: inline-block;
+  width: 5px; height: 5px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--target);
+  vertical-align: middle;
+}
+
+.r.sync .cn { color: var(--muted); font-weight: 500; }
+
+.cfoot {
+  margin: 0;
+  padding: 9px 14px 12px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.r.hit { background: var(--chess-soft); box-shadow: inset 2px 0 0 var(--chess); }
+
+body.hide-sync .r[data-sync] { display: none; }
+
+.hint {
+  margin: 18px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 72ch;
+}
+
+/* ---------- Legend ---------- */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 22px;
+  margin: 26px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--muted);
+  list-style: none;
+}
+.legend li { display: flex; align-items: center; gap: 8px; }
+.legend .lsw { width: 40px; height: 16px; flex: none; }
+.legend .lsw line { stroke: var(--wire); stroke-width: 1.5; stroke-linecap: round; }
+
+/* ---------- Relations list (narrow screens) ---------- */
+.rels { display: none; margin: 32px 0 0; }
+.rels h2 {
+  margin: 0 0 12px;
+  font-family: "Barlow Condensed", Inter, sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.rels ul { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.rels li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.rels code { color: var(--ink); font-size: 12.5px; }
+.rels b { color: var(--muted); font-weight: 400; }
+.rels .card-tag {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--target);
+}
+
+/* ---------- Notes ---------- */
+.notes-wrap { margin-top: 56px; }
+.notes-wrap > h2 {
+  margin: 0 0 8px;
+  font-family: "Barlow Condensed", Inter, sans-serif;
+  font-size: clamp(28px, 3.4vw, 38px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  column-gap: clamp(32px, 5vw, 72px);
+  margin: 0;
+}
+.notes > div { border-top: 1px solid var(--line); padding: 18px 0 6px; margin-top: 12px; }
+.notes dt {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.notes dd {
+  margin: 6px 0 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.notes code {
+  font-size: 0.9em;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: var(--ink);
+}
+
+.pagefoot {
+  margin-top: 40px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--target);
+}
+.pagefoot code { color: var(--muted); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1080px) {
+  .canvas {
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 0;
+    row-gap: 24px;
+  }
+  .hub { grid-column: 1; }
+  .hub .card { width: 100%; }
+  .col-left, .col-right { grid-column: 1; gap: 24px; }
+  .col-right { margin-top: 0; }
+  #wires { display: none; }
+  .rels { display: block; }
+  .legend { gap: 8px 18px; }
+  .legend .wire-key { display: none; }
+}
+
+@media (max-width: 560px) {
+  .bar { gap: 10px; }
+  .bar-actions { width: 100%; margin-left: 0; }
+  .tbutton { flex: 1; justify-content: center; }
+  .lede { font-size: 16px; }
+  .cn { font-size: 13px; }
+  .note { font-size: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; }
+}
+
+/* ---------- Print ---------- */
+@media print {
+  :root,
+  :root[data-theme] {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --raised: #f4f5f7;
+    --line: #c9ccd3;
+    --line-soft: #e3e5ea;
+    --ink: #111113;
+    --muted: #44474e;
+    --target: #5c6068;
+    --wire: #7c8088;
+    --code-bg: rgba(17, 17, 19, 0.05);
+    --pk-ink: #1c5ad0;
+    --pk-bg: rgba(29, 95, 214, 0.1);
+    --pk-line: rgba(29, 95, 214, 0.3);
+    --fk-ink: #7a4200;
+    --fk-bg: rgba(160, 79, 0, 0.09);
+    --fk-line: rgba(160, 79, 0, 0.28);
+  }
+  @page { size: A3 landscape; margin: 12mm; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .bar, .status { display: none !important; }
+  .shell { max-width: none; padding: 0; }
+  .card { break-inside: avoid; }
+  .notes-wrap { break-before: page; }
+  .pagefoot { break-inside: avoid; }
+  /* On paper the connectors can't be measured reliably, so the
+     relationships are listed instead of drawn. */
+  #wires { display: none !important; }
+  .rels { display: block; }
+  .legend .wire-key { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <p class="eyebrow">Chess Boxing Tracker <span>·</span> Supabase Postgres</p>
+    <h1>Database schema</h1>
+    <p class="lede">
+      Where the app keeps accounts, the current goal, weigh-ins, training sessions and game reviews:
+      six app tables plus Supabase's own <code>auth.users</code>, each keyed to a single user row.
+    </p>
+    <ul class="facts">
+      <li><b>6</b> app tables</li>
+      <li><b>1</b> managed table</li>
+      <li>Row-level security on all six</li>
+      <li>Offline-first sync</li>
+      <li><b>3</b> sync columns</li>
+    </ul>
+  </header>
+
+  <div class="bar">
+    <label class="find">
+      <span class="flabel">Find</span>
+      <input id="q" type="search" placeholder="column, type or table" autocomplete="off" spellcheck="false" />
+    </label>
+    <div class="bar-actions">
+      <button class="tbutton" id="sync-toggle" type="button" aria-pressed="true">
+        <span class="dot" aria-hidden="true"></span>Sync columns
+      </button>
+      <button class="tbutton" id="theme-toggle" type="button" aria-pressed="false" aria-label="Switch to light theme">Light</button>
+    </div>
+  </div>
+  <p class="status" id="status" role="status"></p>
+
+  <section class="diagram" aria-label="Entity relationship diagram">
+    <h2 class="sr-only">Entity relationships</h2>
+    <div class="canvas" id="canvas">
+      <svg id="wires" aria-hidden="true" focusable="false">
+        <defs>
+          <marker id="many" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto">
+            <path class="mk" d="M3 2 L12 7 M3 7 L12 7 M3 12 L12 7" />
+          </marker>
+          <marker id="many-hot" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto">
+            <path class="mk-hot" d="M3 2 L12 7 M3 7 L12 7 M3 12 L12 7" />
+          </marker>
+          <marker id="one" viewBox="0 0 14 14" refX="9.5" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto">
+            <path class="mk" d="M9.5 2 L9.5 12" />
+          </marker>
+          <marker id="one-hot" viewBox="0 0 14 14" refX="9.5" refY="7" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto">
+            <path class="mk-hot" d="M9.5 2 L9.5 12" />
+          </marker>
+        </defs>
+        <g id="wireg"></g>
+      </svg>
+      <div class="hub" id="hub"></div>
+      <div class="col col-left" id="col-left"></div>
+      <div class="col col-right" id="col-right"></div>
+    </div>
+
+    <p class="hint">Hover, tap or focus a table to trace its relationships. The filter searches every column name, type and note.</p>
+
+    <ul class="legend" aria-label="Diagram key">
+      <li><span class="b pk">PK</span> Primary key</li>
+      <li><span class="b fk">FK</span> Foreign key</li>
+      <li><span class="b uq">UQ</span> Unique</li>
+      <li><i class="sdot" aria-hidden="true"></i> Sync bookkeeping</li>
+      <li class="wire-key">
+        <svg class="lsw" viewBox="0 0 40 16" aria-hidden="true" focusable="false">
+          <line x1="0" y1="8" x2="40" y2="8" />
+          <line x1="30" y1="2" x2="30" y2="14" />
+          <line x1="35" y1="2" x2="35" y2="14" />
+        </svg>
+        One to one
+      </li>
+      <li class="wire-key">
+        <svg class="lsw" viewBox="0 0 40 16" aria-hidden="true" focusable="false">
+          <line x1="0" y1="8" x2="40" y2="8" />
+          <line x1="30" y1="2" x2="40" y2="8" />
+          <line x1="30" y1="14" x2="40" y2="8" />
+          <line x1="30" y1="8" x2="40" y2="8" />
+        </svg>
+        One to many
+      </li>
+    </ul>
+
+    <section class="rels">
+      <h2>Relationships</h2>
+      <ul id="rels-list"></ul>
+    </section>
+  </section>
+
+  <section class="notes-wrap">
+    <h2>Why it is shaped like this</h2>
+    <dl class="notes">
+      <div>
+        <dt>One row per user, cascading</dt>
+        <dd>A trigger on sign-up creates the <code>profiles</code> and <code>user_settings</code> rows. Every table points at <code>auth.users.id</code> with <code>on delete cascade</code>, so deleting an account leaves nothing behind.</dd>
+      </div>
+      <div>
+        <dt>The goal lives in <code>user_settings</code></dt>
+        <dd>The app runs one goal cycle at a time, so the dates, ratings and weights are columns on the settings row rather than a separate plans table. Starting a new cycle overwrites them.</dd>
+      </div>
+      <div>
+        <dt>How sync resolves conflicts</dt>
+        <dd><code>updated_at</code> is the device's clock and decides last-write-wins — a trigger rejects writes older than what is stored. <code>synced_at</code> is stamped by the server and used as the pull cursor. <code>deleted_at</code> marks soft deletes so removals reach every device.</dd>
+      </div>
+      <div>
+        <dt>Reviews are stored whole</dt>
+        <dd>A review is one <code>jsonb</code> document — engine verdicts, best moves and coach notes — keyed by the Lichess game id and capped at 400 KB. Nothing inside it needs querying.</dd>
+      </div>
+      <div>
+        <dt>Server-only, by omission</dt>
+        <dd><code>coach_usage</code> has row-level security enabled with no policies at all. Only the service-role server writes the per-account rate-limit rows, and no client can read another account's usage.</dd>
+      </div>
+      <div>
+        <dt>Not in the schema yet</dt>
+        <dd>The earlier draft's <code>plans</code> and mascot <code>plan_promotions</code> tables are not implemented. The Lichess rating cache stays in the browser's local database and is re-fetched per device, so it never syncs.</dd>
+      </div>
+    </dl>
+  </section>
+
+  <footer class="pagefoot">
+    Source: <code>app/supabase/schema.sql</code> · this diagram reflects the implemented schema, not the earlier draft.
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var TABLES = [
+    {
+      key: 'auth', name: 'auth.users', tag: 'managed', col: 'hub',
+      footer: 'Owned by Supabase Auth. Deleting a user cascades to every app table.',
+      cols: [
+        { n: 'id', t: 'uuid', b: ['pk'], note: 'auth.uid()' },
+        { n: 'email', t: 'text', b: ['uq'], note: 'sign-in identity' },
+        { n: 'created_at', t: 'timestamptz' },
+        { n: 'last_sign_in_at', t: 'timestamptz' }
+      ]
+    },
+    {
+      key: 'profiles', name: 'profiles', tag: '1 per user', col: 'left',
+      footer: 'RLS · a user can read and write only their own row.',
+      cols: [
+        { n: 'id', t: 'uuid', b: ['pk', 'fk'], note: 'auth.users.id' },
+        { n: 'display_name', t: 'text', note: '≤ 40 chars' },
+        { n: 'created_at', t: 'timestamptz', note: 'default now()' },
+        { n: 'last_seen_at', t: 'timestamptz' }
+      ]
+    },
+    {
+      key: 'user_settings', name: 'user_settings', tag: '1 per user', col: 'left',
+      footer: 'RLS · one row per user; holds the current goal cycle and preferences.',
+      cols: [
+        { n: 'user_id', t: 'uuid', b: ['pk', 'fk'], note: 'auth.users.id' },
+        { n: 'lichess_username', t: 'text', note: 'or empty · ≤ 30' },
+        { n: 'primary_time_control', t: 'text', note: 'rapid | blitz | classical | puzzle' },
+        { n: 'start_rating', t: 'int', note: '400–3500' },
+        { n: 'target_rating', t: 'int', note: '400–3500' },
+        { n: 'start_date', t: 'date' },
+        { n: 'target_date', t: 'date' },
+        { n: 'start_weight_kg', t: 'numeric(5,2)', note: '30–300 · kg' },
+        { n: 'target_weight_kg', t: 'numeric(5,2)', note: '30–300 · kg' },
+        { n: 'units', t: 'text', note: 'kg | stlb' },
+        { n: 'theme', t: 'text', note: 'dark | light' },
+        { n: 'onboarded', t: 'boolean', note: 'setup finished' },
+        { n: 'updated_at', t: 'timestamptz', b: ['sync'] },
+        { n: 'synced_at', t: 'timestamptz', b: ['sync'] }
+      ]
+    },
+    {
+      key: 'coach_usage', name: 'coach_usage', tag: 'append-only', col: 'left',
+      footer: 'RLS on, no policies: only the service-role server reads or writes these rows.',
+      cols: [
+        { n: 'id', t: 'bigint', b: ['pk'], note: 'identity' },
+        { n: 'user_id', t: 'uuid', b: ['fk'], note: 'auth.users.id' },
+        { n: 'created_at', t: 'timestamptz', note: '30 per hour window' }
+      ]
+    },
+    {
+      key: 'weight_entries', name: 'weight_entries', tag: '1 per day', col: 'right',
+      footer: 'RLS · primary key (user_id, entry_date) allows one weigh-in per local day.',
+      cols: [
+        { n: 'user_id', t: 'uuid', b: ['pk', 'fk'], note: 'auth.users.id' },
+        { n: 'entry_date', t: 'date', b: ['pk'], note: 'local day' },
+        { n: 'weight_kg', t: 'numeric(5,2)', note: '30–300 · kg only' },
+        { n: 'waist_cm', t: 'numeric(5,1)', note: '40–200 · optional' },
+        { n: 'updated_at', t: 'timestamptz', b: ['sync'] },
+        { n: 'deleted_at', t: 'timestamptz', b: ['sync'], note: 'soft delete' },
+        { n: 'synced_at', t: 'timestamptz', b: ['sync'] }
+      ]
+    },
+    {
+      key: 'sessions', name: 'sessions', tag: 'many', col: 'right',
+      footer: 'RLS · chess types: tactics, rated, review, openings, endgames. Fitness: boxing, cardio, strength, other.',
+      cols: [
+        { n: 'id', t: 'uuid', b: ['pk'], note: 'made on the device' },
+        { n: 'user_id', t: 'uuid', b: ['fk'], note: 'auth.users.id' },
+        { n: 'session_date', t: 'date' },
+        { n: 'category', t: 'text', note: 'chess | fitness' },
+        { n: 'type', t: 'text', note: 'must match category' },
+        { n: 'duration_min', t: 'int', note: '1–600' },
+        { n: 'intensity', t: 'smallint', note: '1–5' },
+        { n: 'notes', t: 'text', note: '≤ 1000 chars' },
+        { n: 'result', t: 'text', note: 'rated games only' },
+        { n: 'updated_at', t: 'timestamptz', b: ['sync'] },
+        { n: 'deleted_at', t: 'timestamptz', b: ['sync'], note: 'soft delete' },
+        { n: 'synced_at', t: 'timestamptz', b: ['sync'] }
+      ]
+    },
+    {
+      key: 'game_reviews', name: 'game_reviews', tag: '1 per game', col: 'right',
+      footer: 'RLS · one stored review per Lichess game id.',
+      cols: [
+        { n: 'user_id', t: 'uuid', b: ['pk', 'fk'], note: 'auth.users.id' },
+        { n: 'game_id', t: 'text', b: ['pk'], note: 'Lichess id · ≤ 40' },
+        { n: 'data', t: 'jsonb', note: 'engine + coach · < 400 KB' },
+        { n: 'updated_at', t: 'timestamptz', b: ['sync'] },
+        { n: 'deleted_at', t: 'timestamptz', b: ['sync'], note: 'soft delete' },
+        { n: 'synced_at', t: 'timestamptz', b: ['sync'] }
+      ]
+    }
+  ];
+
+  var RELS = [
+    { to: 'profiles', one: true, col: 'id' },
+    { to: 'user_settings', one: true, col: 'user_id' },
+    { to: 'coach_usage', one: false, col: 'user_id' },
+    { to: 'weight_entries', one: false, col: 'user_id' },
+    { to: 'sessions', one: false, col: 'user_id' },
+    { to: 'game_reviews', one: false, col: 'user_id' }
+  ];
+
+  var LABEL = { pk: 'PK', fk: 'FK', uq: 'UQ' };
+
+  var canvas = document.getElementById('canvas');
+  var hub = document.getElementById('hub');
+  var left = document.getElementById('col-left');
+  var right = document.getElementById('col-right');
+  var wireg = document.getElementById('wireg');
+  var svg = document.getElementById('wires');
+  var statusEl = document.getElementById('status');
+  var searchEl = document.getElementById('q');
+  var syncBtn = document.getElementById('sync-toggle');
+  var themeBtn = document.getElementById('theme-toggle');
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function rowsHTML(t) {
+    return t.cols.map(function (c) {
+      var badges = c.b || [];
+      var sync = badges.indexOf('sync') > -1;
+      var marks = badges.filter(function (b) { return b !== 'sync'; })
+        .map(function (b) { return '<span class="b ' + b + '">' + LABEL[b] + '</span>'; })
+        .join('');
+      return '<div class="r' + (sync ? ' sync' : '') + '"' + (sync ? ' data-sync="1"' : '') + '>'
+        + '<span class="f"><span class="cn">' + esc(c.n) + '</span>'
+        + (c.note ? '<span class="note">' + esc(c.note) + '</span>' : '')
+        + '</span>'
+        + '<span class="bg">' + marks + '</span>'
+        + '<span class="ct">' + esc(c.t) + (sync ? '<i class="sdot" aria-hidden="true"></i>' : '') + '</span>'
+        + '</div>';
+    }).join('');
+  }
+
+  function cardHTML(t) {
+    return '<article class="card' + (t.key === 'auth' ? ' managed' : '') + '" data-key="' + t.key + '"'
+      + ' tabindex="0" role="group" aria-label="' + esc(t.name) + ' table, ' + esc(t.tag) + '">'
+      + '<header><h3 class="tname">' + esc(t.name) + '</h3><span class="tag">' + esc(t.tag) + '</span></header>'
+      + '<div class="cols">' + rowsHTML(t) + '</div>'
+      + '<p class="cfoot">' + esc(t.footer) + '</p>'
+      + '</article>';
+  }
+
+  hub.innerHTML = TABLES.filter(function (t) { return t.col === 'hub'; }).map(cardHTML).join('');
+  left.innerHTML = TABLES.filter(function (t) { return t.col === 'left'; }).map(cardHTML).join('');
+  right.innerHTML = TABLES.filter(function (t) { return t.col === 'right'; }).map(cardHTML).join('');
+
+  var relsList = document.getElementById('rels-list');
+  if (relsList) {
+    relsList.innerHTML = RELS.map(function (r) {
+      return '<li><code>' + esc(r.to) + '.' + esc(r.col) + '</code> <b>→</b> <code>auth.users.id</code>'
+        + '<span class="card-tag">' + (r.one ? '1 : 1' : '1 : N') + '</span></li>';
+    }).join('');
+  }
+
+  function isNarrow() {
+    return window.matchMedia('(max-width: 1080px)').matches;
+  }
+
+  function drawWires() {
+    if (!canvas || !wireg) return;
+    if (isNarrow()) { wireg.innerHTML = ''; return; }
+
+    var cr = canvas.getBoundingClientRect();
+    var W = Math.round(canvas.clientWidth);
+    var H = Math.round(canvas.clientHeight);
+    if (!W || !H) return;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+    var hubCard = canvas.querySelector('.card[data-key="auth"]');
+    var lcEl = document.getElementById('col-left');
+    var rcEl = document.getElementById('col-right');
+    if (!hubCard || !lcEl || !rcEl) return;
+
+    var hr = hubCard.getBoundingClientRect();
+    var lc = lcEl.getBoundingClientRect();
+    var rc = rcEl.getBoundingClientRect();
+    if (!lc.width || !rc.width) return;
+
+    var busX = Math.round(((lc.right + rc.left) / 2) - cr.left);
+    var startY = Math.round(hr.bottom - cr.top);
+    var maxY = startY;
+    var stubs = [];
+
+    RELS.forEach(function (rel) {
+      var el = canvas.querySelector('.card[data-key="' + rel.to + '"]');
+      if (!el) return;
+      var r = el.getBoundingClientRect();
+      var goesLeft = (r.left + r.width / 2 - cr.left) < busX;
+      var edgeX = Math.round((goesLeft ? r.right : r.left) - cr.left);
+      var y = Math.round(r.top - cr.top + r.height / 2);
+      y = Math.max(startY + 24, Math.min(y, H - 20));
+      maxY = Math.max(maxY, y);
+      stubs.push({ to: rel.to, x: edgeX, y: y, one: rel.one });
+    });
+
+    var parts = [];
+    parts.push('<path class="wire bus" d="M ' + busX + ' ' + startY + ' L ' + busX + ' ' + maxY + '" />');
+    parts.push('<circle class="wire-dot" cx="' + busX + '" cy="' + startY + '" r="3.5" />');
+
+    stubs.forEach(function (s) {
+      var kind = s.one ? 'one' : 'many';
+      parts.push('<path class="wire stub" data-to="' + s.to + '" data-kind="' + kind + '"'
+        + ' d="M ' + busX + ' ' + s.y + ' L ' + s.x + ' ' + s.y + '"'
+        + ' marker-end="url(#' + kind + ')" />');
+    });
+
+    wireg.innerHTML = parts.join('');
+    bindWires();
+    if (pinned) setHot(pinned);
+  }
+
+  function bindWires() {
+    Array.prototype.forEach.call(wireg.querySelectorAll('.stub'), function (p) {
+      var kind = p.getAttribute('data-kind');
+      p.setAttribute('data-idle', 'url(#' + kind + ')');
+      p.setAttribute('data-hot', 'url(#' + kind + '-hot)');
+    });
+  }
+
+  var pinned = null;
+
+  function cards() {
+    return Array.prototype.slice.call(canvas.querySelectorAll('.card'));
+  }
+
+  function setHot(key) {
+    var list = cards();
+    var stubs = Array.prototype.slice.call(wireg.querySelectorAll('.stub'));
+    var bus = wireg.querySelector('.bus');
+    var dot = wireg.querySelector('.wire-dot');
+
+    if (!key) {
+      canvas.classList.remove('has-hot');
+      list.forEach(function (c) { c.classList.remove('hot'); });
+      stubs.forEach(function (s) {
+        s.classList.remove('wire-hot');
+        if (s.getAttribute('data-idle')) s.setAttribute('marker-end', s.getAttribute('data-idle'));
+      });
+      if (bus) bus.classList.remove('wire-hot');
+      if (dot) dot.classList.remove('wire-hot');
+      return;
+    }
+
+    canvas.classList.add('has-hot');
+    var related = key === 'auth' ? list.map(function (c) { return c.getAttribute('data-key'); }) : [key, 'auth'];
+    list.forEach(function (c) {
+      c.classList.toggle('hot', related.indexOf(c.getAttribute('data-key')) > -1);
+    });
+    stubs.forEach(function (s) {
+      var on = key === 'auth' || s.getAttribute('data-to') === key;
+      s.classList.toggle('wire-hot', on);
+      if (s.getAttribute('data-hot')) s.setAttribute('marker-end', on ? s.getAttribute('data-hot') : s.getAttribute('data-idle'));
+    });
+    if (bus) bus.classList.add('wire-hot');
+    if (dot) dot.classList.add('wire-hot');
+  }
+
+  canvas.addEventListener('pointerover', function (e) {
+    var card = e.target.closest ? e.target.closest('.card') : null;
+    if (card && !pinned) setHot(card.getAttribute('data-key'));
+  });
+
+  canvas.addEventListener('pointerout', function (e) {
+    if (pinned) return;
+    var to = e.relatedTarget;
+    if (!to || !canvas.contains(to)) setHot(null);
+  });
+
+  canvas.addEventListener('focusin', function (e) {
+    var card = e.target.closest ? e.target.closest('.card') : null;
+    if (card) setHot(card.getAttribute('data-key'));
+  });
+
+  canvas.addEventListener('focusout', function () {
+    if (!pinned) setHot(null);
+  });
+
+  canvas.addEventListener('click', function (e) {
+    var card = e.target.closest ? e.target.closest('.card') : null;
+    if (!card) return;
+    var key = card.getAttribute('data-key');
+    pinned = pinned === key ? null : key;
+    setHot(pinned);
+  });
+
+  canvas.addEventListener('keydown', function (e) {
+    var card = e.target.closest ? e.target.closest('.card') : null;
+    if (!card) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      var key = card.getAttribute('data-key');
+      pinned = pinned === key ? null : key;
+      setHot(pinned);
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && pinned) {
+      pinned = null;
+      setHot(null);
+    }
+  });
+
+  searchEl.addEventListener('input', function () {
+    var raw = searchEl.value.trim();
+    var q = raw.toLowerCase();
+    var hits = 0;
+    cards().forEach(function (card) {
+      var nameEl = card.querySelector('.tname');
+      var nameHit = nameEl ? nameEl.textContent.toLowerCase().indexOf(q) > -1 : false;
+      var cardHits = 0;
+      var syncHidden = document.body.classList.contains('hide-sync');
+      Array.prototype.forEach.call(card.querySelectorAll('.r'), function (row) {
+        var rowHit = nameHit || row.textContent.toLowerCase().indexOf(q) > -1;
+        var visible = !(syncHidden && row.hasAttribute('data-sync'));
+        var hit = !!q && rowHit && visible;
+        row.classList.toggle('hit', hit);
+        if (hit) cardHits++;
+      });
+      hits += cardHits;
+      card.classList.toggle('nomatch', !!q && cardHits === 0);
+    });
+    statusEl.textContent = !q ? '' : (hits
+      ? hits + (hits === 1 ? ' column matches “' : ' columns match “') + raw + '”'
+      : 'No column or table matches “' + raw + '”');
+  });
+
+  syncBtn.addEventListener('click', function () {
+    var visible = syncBtn.getAttribute('aria-pressed') === 'true';
+    syncBtn.setAttribute('aria-pressed', String(!visible));
+    document.body.classList.toggle('hide-sync', visible);
+    requestAnimationFrame(drawWires);
+  });
+
+  themeBtn.addEventListener('click', function () {
+    var isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    themeBtn.textContent = isDark ? 'Dark' : 'Light';
+    themeBtn.setAttribute('aria-pressed', String(isDark));
+    themeBtn.setAttribute('aria-label', isDark ? 'Switch to dark theme' : 'Switch to light theme');
+  });
+
+  var raf = 0;
+  function schedule() {
+    if (raf) return;
+    raf = requestAnimationFrame(function () { raf = 0; drawWires(); });
+  }
+
+  if (window.ResizeObserver) {
+    new ResizeObserver(schedule).observe(canvas);
+  } else {
+    window.addEventListener('resize', schedule);
+  }
+
+  window.addEventListener('load', schedule);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
+
+  drawWires();
+})();
+</script>
+</body>
+</html>

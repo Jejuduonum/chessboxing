@@ -1,0 +1,320 @@
+<!doctype html>
+<!-- Chess Boxing Tracker — pawn mascot style exploration.
+     Every pawn is vector SVG built by the functions in the <script> below:
+     one shared silhouette, a face() per mood, and one renderer per style. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pawn mascot · style exploration · Chess Boxing Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap" />
+  <style>
+    :root {
+      --bg: #0E0E10;
+      --surface: #17171A;
+      --raised: #222226;
+      --line: #2E2E34;
+      --ink: #F2F2F0;
+      --muted: #A1A1A8;
+      --chess: #4C8DFF;
+      --chess-ink: #6FA2FF;
+      --fit: #E5484D;
+      --fit-ink: #F2666A;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font: 400 16px/1.55 Inter, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1320px; margin: 0 auto; padding: 56px 32px 96px; }
+
+    .top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 48px; padding-bottom: 32px; border-bottom: 1px solid var(--line); }
+    .top h1 { margin: 0; font: 700 clamp(44px, 6vw, 76px)/0.92 "Barlow Condensed", Inter, sans-serif; text-transform: uppercase; letter-spacing: 0.01em; }
+    .top h1 span { display: block; color: var(--chess-ink); }
+    .top p { margin: 0; max-width: 56ch; color: var(--muted); }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 24px; margin-top: 40px; }
+    .card { background: var(--surface); border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+    .card header { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: baseline; }
+    .num { font: 700 20px/1 "Barlow Condensed", sans-serif; color: var(--muted); }
+    .card h2 { margin: 0; font: 700 32px/1 "Barlow Condensed", sans-serif; text-transform: uppercase; letter-spacing: 0.02em; }
+    .card header p { grid-column: 1 / -1; margin: 8px 0 0; color: var(--muted); font-size: 15px; }
+
+    .stage { background: var(--bg); border-radius: 18px; display: flex; align-items: center; justify-content: center; padding: 24px 0 16px; }
+    .stage svg { width: 220px; height: auto; display: block; }
+
+    .label { margin: 0 0 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .moods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .moods figure { margin: 0; background: var(--bg); border-radius: 14px; padding: 12px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .moods svg { width: 84px; height: auto; display: block; }
+    .moods figcaption { font-size: 14px; color: var(--muted); }
+
+    .sizes { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+    .sizes figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .sizes figcaption { font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .tile { width: 72px; height: 72px; border-radius: 18px; background: var(--bg); display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px var(--line); }
+    .tile svg { width: 52px; height: auto; display: block; }
+    .avatar { border-radius: 50%; background: var(--raised); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .avatar svg { display: block; height: auto; }
+    .av40 { width: 40px; height: 40px; } .av40 svg { width: 30px; }
+    .av24 { width: 24px; height: 24px; } .av24 svg { width: 18px; }
+
+    .fit { margin: 0; font-size: 15px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+    .fit strong { color: var(--ink); font-weight: 600; }
+
+    .ladder { margin-top: 56px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .ladder h2 { margin: 0; font: 700 32px/1 "Barlow Condensed", sans-serif; text-transform: uppercase; }
+    .ladder > p { margin: 0; color: var(--muted); max-width: 70ch; }
+    .steps { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+    .steps li { background: var(--surface); border-radius: 16px; padding: 16px; }
+    .steps b { display: block; font: 700 24px/1.1 "Barlow Condensed", sans-serif; text-transform: uppercase; }
+    .steps span { display: block; color: var(--muted); font-size: 15px; }
+    .steps .now { box-shadow: inset 0 0 0 2px var(--chess); }
+
+    @media (max-width: 640px) { .wrap { padding: 32px 16px 64px; } .card { padding: 18px; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <h1>Pawn mascot<span>Style exploration</span></h1>
+      <p>Six takes on the pawn that starts every user's journey. Each shows the character large, three moods (happy, determined when behind target, tired) and how it holds up as an app icon and small avatar. Pick one direction — the knight, bishop, rook and queen get designed in that style next.</p>
+    </header>
+
+    <section class="grid" id="styles" aria-label="Mascot styles"></section>
+
+    <section class="ladder" aria-labelledby="ladder-title">
+      <h2 id="ladder-title">Promotion ladder · concept</h2>
+      <p>Rank comes from progress between your starting and target rating. Ranks are earned and never taken away — falling behind the target line changes the mascot's mood, not its piece.</p>
+      <ol class="steps">
+        <li class="now"><b>Pawn</b><span>0–24% of the way</span></li>
+        <li><b>Knight</b><span>25–49%</span></li>
+        <li><b>Bishop</b><span>50–74%</span></li>
+        <li><b>Rook</b><span>75–99%</span></li>
+        <li><b>Queen</b><span>Goal hit · promotion moment</span></li>
+      </ol>
+    </section>
+  </main>
+
+  <script>
+  /* ---------------------------------------------------------------
+     Shared geometry (viewBox 0 0 200 220): chibi proportions — big head.
+     --------------------------------------------------------------- */
+  const SIL = {
+    head: { cx: 100, cy: 64, r: 40 },
+    collar: 'M58 111a7 7 0 0 1 7-7h70a7 7 0 0 1 7 7v0a7 7 0 0 1-7 7H65a7 7 0 0 1-7-7z',
+    body: 'M74 116C74 140 64 158 55 172H145C136 158 126 140 126 116Z',
+    base: 'M40 184a14 14 0 0 1 14-14h92a14 14 0 0 1 14 14v0a14 14 0 0 1-14 14H54a14 14 0 0 1-14-14z',
+  };
+  let uid = 0;
+
+  /* Faces: one per mood. Colours come from the style. */
+  function face(mood, c) {
+    const ink = c.ink, blush = c.blush ?? '#FF8FA3', hl = c.highlight ?? '#FFFFFF';
+    const eye = (x) => `<ellipse cx="${x}" cy="62" rx="5.5" ry="7" fill="${ink}"/><circle cx="${x - 1.6}" cy="59" r="2" fill="${hl}"/>`;
+    const blushes = c.noBlush ? '' : `<ellipse cx="76" cy="77" rx="7.5" ry="4" fill="${blush}" opacity="0.75"/><ellipse cx="124" cy="77" rx="7.5" ry="4" fill="${blush}" opacity="0.75"/>`;
+    const sw = c.stroke ?? 3.5;
+    if (mood === 'happy') {
+      return eye(86) + eye(114) + blushes +
+        `<path d="M91 76Q100 89 109 76Q100 80 91 76Z" fill="${ink}" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/>`;
+    }
+    if (mood === 'determined') {
+      return `<ellipse cx="86" cy="64" rx="5" ry="6" fill="${ink}"/><circle cx="84.6" cy="61.8" r="1.8" fill="${hl}"/>` +
+        `<ellipse cx="114" cy="64" rx="5" ry="6" fill="${ink}"/><circle cx="112.6" cy="61.8" r="1.8" fill="${hl}"/>` +
+        `<path d="M76 49L93 55M124 49L107 55" stroke="${ink}" stroke-width="${sw + 0.5}" stroke-linecap="round"/>` +
+        `<path d="M92 82Q100 78 108 82" fill="none" stroke="${ink}" stroke-width="${sw}" stroke-linecap="round"/>` + blushes;
+    }
+    // tired
+    return `<path d="M79 63Q86 68 93 63M107 63Q114 68 121 63" fill="none" stroke="${ink}" stroke-width="${sw}" stroke-linecap="round"/>` +
+      `<ellipse cx="100" cy="81" rx="4.5" ry="3.5" fill="${ink}"/>` + blushes +
+      `<path d="M136 34Q143 46 136 50Q129 46 136 34Z" fill="${c.sweat ?? '#8EC5FF'}"/>`;
+  }
+
+  /* ---------------- 01 Kawaii: flat, round, blush ---------------- */
+  function kawaii(mood) {
+    const blue = '#4C8DFF', deep = '#3A72E2', light = '#8FB9FF';
+    return `
+      <ellipse cx="100" cy="206" rx="60" ry="6" fill="#000" opacity="0.35"/>
+      <path d="${SIL.base}" fill="${deep}"/>
+      <path d="${SIL.body}" fill="${blue}"/>
+      <path d="${SIL.collar}" fill="${deep}"/>
+      <circle cx="${SIL.head.cx}" cy="${SIL.head.cy}" r="${SIL.head.r}" fill="${blue}"/>
+      <ellipse cx="82" cy="42" rx="13" ry="7" fill="${light}" opacity="0.6" transform="rotate(-28 82 42)"/>
+      <ellipse cx="86" cy="140" rx="4" ry="12" fill="${light}" opacity="0.45"/>
+      ${face(mood, { ink: '#0E0E10' })}`;
+  }
+
+  /* ---------------- 02 Chess boxer: gloves + headband ---------------- */
+  function boxer(mood) {
+    const ivory = '#EDEBE6', shade = '#CFCBC2', red = '#E5484D', redDeep = '#B8343A';
+    const glove = (x, flip) => `
+      <g transform="translate(${x} 142) scale(${flip ? -1 : 1} 1)">
+        <rect x="-10" y="10" width="20" height="10" rx="3" fill="#F2F2F0"/>
+        <path d="M-17 2a17 17 0 0 1 34 0v4a14 14 0 0 1-14 14h-6A14 14 0 0 1-17 6z" fill="${red}"/>
+        <path d="M-17 2a17 17 0 0 1 12-16a14 14 0 0 0-4 12z" fill="#FF8A8E" opacity="0.7"/>
+        <path d="M5 -4a8 8 0 0 1 10 2" fill="none" stroke="${redDeep}" stroke-width="3" stroke-linecap="round"/>
+      </g>`;
+    return `
+      <ellipse cx="100" cy="206" rx="64" ry="6" fill="#000" opacity="0.35"/>
+      <path d="${SIL.base}" fill="${shade}"/>
+      <path d="${SIL.body}" fill="${ivory}"/>
+      <path d="${SIL.collar}" fill="${shade}"/>
+      <circle cx="100" cy="64" r="40" fill="${ivory}"/>
+      <path d="M61 46Q100 30 139 46L137 58Q100 44 63 58Z" fill="${red}"/>
+      <path d="M136 50Q156 46 162 58Q150 56 146 62Q144 54 136 56Z" fill="${redDeep}"/>
+      <path d="M136 52Q154 60 156 74Q146 66 140 68Q142 60 134 58Z" fill="${red}"/>
+      ${glove(52, false)}${glove(148, true)}
+      ${face(mood, { ink: '#0E0E10', blush: '#FF9AA8' })}`;
+  }
+
+  /* ---------------- 03 Pixel art: 16 × 18 sprite ---------------- */
+  function pixel(mood) {
+    const W = 16, H = 18, P = 12, OX = 4, OY = 2;
+    const inside = (x, y) => {
+      if ((x - 8) ** 2 + (y - 5.2) ** 2 <= 4.3 ** 2) return 'head';
+      if (y >= 9.4 && y < 10.6 && x > 3.4 && x < 12.6) return 'collar';
+      if (y >= 10.6 && y < 14.6) { const t = (y - 10.6) / 4; const half = 2.6 + t * 2.4; return Math.abs(x - 8) < half ? 'body' : null; }
+      if (y >= 14.6 && y < 16.6 && x > 1.6 && x < 14.4) return 'base';
+      return null;
+    };
+    const grid = [];
+    for (let j = 0; j < H; j++) { grid.push([]); for (let i = 0; i < W; i++) grid[j].push(inside(i + 0.5, j + 0.5)); }
+    const C = { o: '#123A8C', b: '#4C8DFF', h: '#A9CBFF', s: '#3364D2', e: '#0E0E10', p: '#FF8FA3', d: '#8EC5FF', w: '#FFFFFF' };
+    const px = [];
+    const put = (i, j, k) => { px[j * W + i] = k; };
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      const v = grid[j][i];
+      if (v) {
+        let k = 'b';
+        if (v === 'collar' || v === 'base' || (v === 'body' && j >= 13)) k = 's';
+        if (v === 'head' && ((i === 5 && j === 2) || (i === 4 && j === 3) || (i === 5 && j === 3))) k = 'h';
+        put(i, j, k);
+      } else {
+        const n = [[1,0],[-1,0],[0,1],[0,-1]].some(([dx, dy]) => grid[j + dy]?.[i + dx]);
+        if (n) put(i, j, 'o');
+      }
+    }
+    const face = {
+      happy: [[5,5,'e'],[5,6,'e'],[10,5,'e'],[10,6,'e'],[6,7,'e'],[7,8,'e'],[8,8,'e'],[9,7,'e'],[4,7,'p'],[11,7,'p']],
+      determined: [[4,3,'e'],[5,4,'e'],[11,3,'e'],[10,4,'e'],[5,6,'e'],[10,6,'e'],[7,8,'e'],[8,8,'e'],[4,7,'p'],[11,7,'p']],
+      tired: [[4,6,'e'],[5,6,'e'],[10,6,'e'],[11,6,'e'],[7,8,'e'],[8,8,'e'],[13,1,'d'],[13,2,'d'],[4,7,'p'],[11,7,'p']],
+    }[mood];
+    face.forEach(([i, j, k]) => put(i, j, k));
+    let out = `<g transform="translate(${OX} ${OY})" shape-rendering="crispEdges">`;
+    px.forEach((k, idx) => { if (k) out += `<rect x="${(idx % W) * P}" y="${Math.floor(idx / W) * P}" width="${P}" height="${P}" fill="${C[k]}"/>`; });
+    return out + `</g><rect x="28" y="206" width="144" height="6" fill="#000" opacity="0.35" shape-rendering="crispEdges"/>`;
+  }
+
+  /* ---------------- 04 Line art: matches the app's icon set ---------------- */
+  function line(mood) {
+    const s = '#F2F2F0', fill = '#0E0E10';
+    return `
+      <g fill="${fill}" stroke="${s}" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+        <path d="${SIL.base}"/>
+        <path d="${SIL.body}"/>
+        <path d="${SIL.collar}"/>
+        <circle cx="100" cy="64" r="40"/>
+      </g>
+      <path d="M78 34Q86 28 96 27" fill="none" stroke="#6FA2FF" stroke-width="5" stroke-linecap="round"/>
+      ${face(mood, { ink: s, highlight: fill, noBlush: true, stroke: 4.5, sweat: '#6FA2FF' })}
+      <path d="M70 77h10M120 77h10" stroke="#6FA2FF" stroke-width="4" stroke-linecap="round"/>`;
+  }
+
+  /* ---------------- 05 Soft 3D clay ---------------- */
+  function clay(mood) {
+    const id = `c${uid++}`;
+    return `
+      <defs>
+        <radialGradient id="${id}h" cx="0.36" cy="0.3" r="0.8">
+          <stop offset="0" stop-color="#B9D4FF"/><stop offset="0.45" stop-color="#5E98FF"/><stop offset="1" stop-color="#2A55B8"/>
+        </radialGradient>
+        <linearGradient id="${id}b" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#7DAEFF"/><stop offset="0.55" stop-color="#4C8DFF"/><stop offset="1" stop-color="#2C58BE"/>
+        </linearGradient>
+        <linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#4C80E6"/><stop offset="1" stop-color="#244A9E"/>
+        </linearGradient>
+        <filter id="${id}f" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="5"/></filter>
+      </defs>
+      <ellipse cx="100" cy="206" rx="66" ry="9" fill="#000" opacity="0.55" filter="url(#${id}f)"/>
+      <path d="${SIL.base}" fill="url(#${id}s)"/>
+      <path d="M48 176h104" stroke="#9CC0FF" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+      <path d="${SIL.body}" fill="url(#${id}b)"/>
+      <path d="${SIL.collar}" fill="url(#${id}s)"/>
+      <circle cx="100" cy="64" r="40" fill="url(#${id}h)"/>
+      <ellipse cx="84" cy="44" rx="10" ry="6" fill="#FFFFFF" opacity="0.75" transform="rotate(-30 84 44)"/>
+      ${face(mood, { ink: '#14213D', blush: '#FF9DB0' })}`;
+  }
+
+  /* ---------------- 06 Sticker: bold, white die-cut outline ---------------- */
+  function sticker(mood) {
+    const red = '#E5484D', deep = '#B8343A', silhouette = (attrs) => `
+      <g ${attrs}>
+        <path d="${SIL.base}"/><path d="${SIL.body}"/><path d="${SIL.collar}"/><circle cx="100" cy="64" r="40"/>
+      </g>`;
+    const sparkle = mood === 'happy'
+      ? `<path d="M156 24l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" fill="#FFD166" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round"/>`
+      : '';
+    return `
+      ${silhouette('transform="translate(4 7)" fill="#000" opacity="0.4" stroke="#000" stroke-width="16" stroke-linejoin="round"')}
+      ${silhouette('fill="#FFFFFF" stroke="#FFFFFF" stroke-width="16" stroke-linejoin="round"')}
+      <path d="${SIL.base}" fill="${deep}"/>
+      <path d="${SIL.body}" fill="${red}"/>
+      <path d="${SIL.collar}" fill="${deep}"/>
+      <circle cx="100" cy="64" r="40" fill="${red}"/>
+      <ellipse cx="83" cy="42" rx="12" ry="6" fill="#FF9EA1" opacity="0.8" transform="rotate(-28 83 42)"/>
+      ${face(mood, { ink: '#2A0C0E', blush: '#FFC2C7', sweat: '#BFE0FF' })}
+      ${sparkle}`;
+  }
+
+  /* ---------------- Board ---------------- */
+  const STYLES = [
+    { name: 'Kawaii', fn: kawaii, desc: 'Round, soft and friendly in chess blue. Big shiny eyes and blush.',
+      fit: 'Warm, welcoming onboarding and a gentle daily nudge. Easiest to morph into the other pieces.' },
+    { name: 'Chess boxer', fn: boxer, desc: 'A scrappy ivory pawn in red gloves and a headband — both goals in one character.',
+      fit: 'The most on-brand option. Gear can grow with the weight goal (gloves → shorts → title belt).' },
+    { name: 'Pixel art', fn: pixel, desc: 'A 16-bit sprite. Retro, game-like, and sharp at tiny sizes.',
+      fit: 'Leaning into “levelling up”. Promotions feel like unlocking a new character.' },
+    { name: 'Line art', fn: line, desc: 'Single-weight outlines that sit with the app’s existing icon set.',
+      fit: 'Quiet and premium. Lives comfortably in headers and lists without stealing focus.' },
+    { name: 'Soft 3D clay', fn: clay, desc: 'Gently shaded, toy-like volume with a soft floor shadow.',
+      fit: 'Celebration screens and the app icon, where a little depth makes it feel collectible.' },
+    { name: 'Sticker', fn: sticker, desc: 'Bold red with a thick white die-cut outline and a big expression.',
+      fit: 'Shareable moments — promotion badges, streaks and social posts.' },
+  ];
+  const MOODS = [['happy', 'Happy'], ['determined', 'Determined'], ['tired', 'Tired']];
+  const svg = (fn, mood, label) =>
+    `<svg viewBox="0 0 200 220" role="img" aria-label="${label}" xmlns="http://www.w3.org/2000/svg">${fn(mood)}</svg>`;
+
+  document.getElementById('styles').innerHTML = STYLES.map((s, i) => `
+    <article class="card" aria-labelledby="style-${i}">
+      <header>
+        <span class="num">${String(i + 1).padStart(2, '0')}</span>
+        <h2 id="style-${i}">${s.name}</h2>
+        <p>${s.desc}</p>
+      </header>
+      <div class="stage">${svg(s.fn, 'happy', `${s.name} pawn, happy`)}</div>
+      <div>
+        <p class="label">Moods</p>
+        <div class="moods">
+          ${MOODS.map(([m, l]) => `<figure>${svg(s.fn, m, `${s.name} pawn, ${l.toLowerCase()}`)}<figcaption>${l}</figcaption></figure>`).join('')}
+        </div>
+      </div>
+      <div>
+        <p class="label">Small sizes</p>
+        <div class="sizes">
+          <figure><div class="tile">${svg(s.fn, 'happy', `${s.name} pawn as app icon`)}</div><figcaption>App icon</figcaption></figure>
+          <figure><div class="avatar av40">${svg(s.fn, 'happy', `${s.name} pawn at 40px`)}</div><figcaption>40 px</figcaption></figure>
+          <figure><div class="avatar av24">${svg(s.fn, 'happy', `${s.name} pawn at 24px`)}</div><figcaption>24 px</figcaption></figure>
+        </div>
+      </div>
+      <p class="fit"><strong>Best for:</strong> ${s.fit}</p>
+    </article>`).join('');
+  </script>
+</body>
+</html>

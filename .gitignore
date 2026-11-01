@@ -1,0 +1,6 @@
+.DS_Store
+.vercel/
+.file-versions/
+.od-frames/
+.od-skills/
+*.artifact.json

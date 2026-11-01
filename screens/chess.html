@@ -1,0 +1,394 @@
+<!doctype html>
+<!-- Chess Boxing Tracker — v1 design mock: Chess. Static HTML + Tailwind, 375px wide, platform-neutral phone shell. -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chess · Chess Boxing Tracker mock</title>
+  <style>
+/* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio, geometry.
+   Put this @layer first; product CSS outside the layer wins ordinary layout rules.
+   Native hidden and closed-dialog states take precedence over component display rules. */
+@layer od-layout {
+  [hidden]:not([hidden="until-found" i]) { display: none !important; }
+  dialog:not([open]) { display: none !important; }
+
+  :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+  /* containers */
+  .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+  .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+  .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+  .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+  .od-fill    { flex: 1 1 0; min-width: 0; }
+  .od-fixed   { flex: none; }
+  .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+  /* stacked information: each piece is its own line — never sibling inline spans */
+  .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+  :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+  .od-tile { display: grid; grid-template-rows: auto 1fr; }
+  :where(.od-tile) > :where(*) { display: block; }
+
+  /* media keeps its intrinsic ratio by default; never a distorted or cropped
+     cover by accident. height:auto lets the ratio win over an <img height="…">
+     attribute. Cropping to a uniform box is an explicit opt-in: set --od-ratio
+     AND add .od-media-cover together (per the core rule, only where a crop is
+     deliberate — tile thumbs, decorative fills — never on full-frame content). */
+  .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+  .od-media-cover { object-fit: cover; }
+
+  /* functional inline SVG icons opt into bounded geometry; content SVGs keep their own */
+  .od-icon { display: inline-block; inline-size: var(--od-icon-size, 1em); block-size: var(--od-icon-size, 1em); flex: none; }
+
+  /* data text only — authored copy is rewritten to its budget instead */
+  .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .od-clamp-2 { -webkit-line-clamp: 2; }
+  .od-clamp-3 { -webkit-line-clamp: 3; }
+  .od-lines-2 { min-height: calc(2 * 1.4em); }   /* block-level reservation for a shared baseline */
+  .od-nowrap  { white-space: nowrap; }           /* 数字+单位 · 价格+起 · 日期+星期 */
+  .od-keep    { word-break: keep-all; overflow-wrap: anywhere; } /* CJK labels break at spaces / <wbr> first */
+
+  /* screen skeleton (optional): bars take their own space, the middle scrolls — no padding guessed for chrome */
+  .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+  .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+  /* horizontal rail: the next item peeks at the edge; trailing room survives overflow */
+  .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+             padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+  .od-rail::-webkit-scrollbar { display: none; }
+  :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+  :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+  .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+  .od-touch  { min-width: 44px; min-height: 44px; }
+}
+:root [hidden]:where(:not([hidden="until-found" i])) { display: none; }
+/* /OD-LAYOUT-PRIMITIVES v1 */
+
+
+    /* Native hidden remains authoritative over component flex/grid styles. */
+    [hidden]:not([hidden="until-found" i]) { display: none !important; }
+
+    :root {
+      --phone-screen-width: 375px;
+      --phone-screen-height: 812px;
+      --phone-bezel: 10px;
+      --phone-outer-radius: 52px;
+      --phone-screen-radius: 42px;
+      --phone-safe-top: 50px;
+      --phone-safe-bottom: 29px;
+      --phone-system-fg: #F2F2F0;
+      --phone-screen-bg: #0E0E10;
+      --phone-stage-bg: #eaebee;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 32px;
+      background:
+        radial-gradient(circle at 50% 15%, rgba(255,255,255,.94), transparent 35%),
+        var(--phone-stage-bg, #eaebee);
+      color: #191a1d;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .phone-frame {
+      position: relative;
+      width: calc(var(--phone-screen-width, 390px) + var(--phone-bezel, 10px) * 2);
+      height: calc(var(--phone-screen-height, 844px) + var(--phone-bezel, 10px) * 2);
+      padding: var(--phone-bezel, 10px);
+      border-radius: var(--phone-outer-radius, 52px);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.2), transparent 17%),
+        linear-gradient(160deg, #3f4146 0%, #202227 48%, #0b0c0f 100%);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.13),
+        inset 0 0 0 2px rgba(0,0,0,.85),
+        0 32px 68px -20px rgba(10,12,16,.52),
+        0 10px 24px -10px rgba(10,12,16,.32);
+      isolation: isolate;
+    }
+
+    .phone-frame::before,
+    .phone-frame::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      top: 96px;
+      bottom: 96px;
+      width: 2px;
+      background: linear-gradient(to bottom, transparent, rgba(255,255,255,.13) 16%, transparent 30%, transparent 72%, rgba(255,255,255,.07) 88%, transparent);
+    }
+    .phone-frame::before { left: 0; }
+    .phone-frame::after { right: 0; }
+
+    .hardware-button {
+      position: absolute;
+      width: 4px;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #08090b, #2a2d33 60%, #08090b);
+      box-shadow: inset 0 1px rgba(255,255,255,.08);
+    }
+    .hardware-button.volume { left: -3px; top: 222px; height: 86px; }
+    .hardware-button.power { right: -3px; top: 270px; height: 82px; }
+
+    .phone-screen {
+      position: relative;
+      width: var(--phone-screen-width, 390px);
+      height: var(--phone-screen-height, 844px);
+      overflow: hidden;
+      border-radius: var(--phone-screen-radius, 42px);
+      background: var(--phone-screen-bg, #f8f8f9);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+    }
+
+    .phone-content {
+      position: absolute;
+      inset: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-top: var(--phone-safe-top, 50px);
+      padding-bottom: var(--phone-safe-bottom, 29px);
+      background: var(--phone-screen-bg, #f8f8f9);
+    }
+    .phone-content::-webkit-scrollbar { display: none; }
+
+    .camera-dot {
+      position: absolute;
+      z-index: 20;
+      top: 13px;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 35%, #344154 0 12%, #0a0c10 34%, #000 76%);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.06);
+      pointer-events: none;
+    }
+
+    .status-bar {
+      position: absolute;
+      z-index: 15;
+      inset: 0 0 auto;
+      height: var(--phone-safe-top, 50px);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr);
+      align-items: start;
+      padding: 14px 20px 0;
+      color: var(--phone-system-fg, #17181a);
+      opacity: .8;
+      pointer-events: none;
+    }
+    .status-time {
+      justify-self: start;
+      display: flex;
+      align-items: center;
+      height: 15px;
+      font-size: 14px;
+      font-weight: 560;
+      line-height: 1;
+      letter-spacing: .01em;
+    }
+    .status-cutout-zone { width: 56px; }
+    .status-icons {
+      justify-self: end;
+      display: inline-flex;
+      align-items: center;
+      height: 15px;
+      gap: 6px;
+    }
+    .status-icons svg {
+      display: block;
+      flex: none;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.35;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .status-icons .connectivity { width: 15px; height: 12px; }
+    .status-icons .wifi { width: 15px; height: 12px; }
+    .status-icons .battery { width: 19px; height: 11px; }
+
+    .gesture-indicator {
+      position: absolute;
+      z-index: 20;
+      left: 50%;
+      bottom: 8px;
+      width: 96px;
+      height: 4px;
+      transform: translateX(-50%);
+      border-radius: 99px;
+      background: var(--phone-system-fg, #17181a);
+      opacity: .86;
+      pointer-events: none;
+    }
+
+    /* Presentation scaling: keep the whole handset visible on short viewports. */
+    @media (max-height: 927px) { .phone-frame { zoom: 0.9; } }
+    @media (max-height: 840px) { .phone-frame { zoom: 0.82; } }
+    @media (max-height: 771px) { .phone-frame { zoom: 0.74; } }
+    @media (max-height: 702px) { .phone-frame { zoom: 0.66; } }
+    /* Narrow viewports: the handset chrome collapses and the screen fills the
+       viewport, so the app behaves like a real phone page instead of
+       scrolling sideways. */
+    @media (max-width: 480px) {
+      body { padding: 0; display: block; }
+      .phone-frame { width: 100%; height: 100dvh; padding: 0; border-radius: 0; background: none; box-shadow: none; zoom: 1; }
+      .phone-frame::before, .phone-frame::after, .hardware-button { display: none; }
+      .phone-screen { width: 100%; height: 100%; border-radius: 0; }
+    }
+  
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="tw.config.js"></script>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <div class="phone-frame" data-phone-shell data-platform="neutral">
+    <span class="hardware-button volume" aria-hidden="true"></span>
+    <span class="hardware-button power" aria-hidden="true"></span>
+
+    <section class="phone-screen" data-phone-screen>
+      <main class="phone-content" data-phone-content>
+        <!-- APP CONTENT START: replace everything inside this sample wrapper with the product. -->
+        <div class="app od-screen" data-theme="dark">
+      <header class="od-row px-4 pt-3 pb-3">
+      <div class="od-field od-fill"><span class="eyebrow">@chessboxer_n on Lichess</span><h1 class="h-title">Chess</h1></div>
+      <button class="icon-btn od-fixed" data-refresh aria-label="Refresh ratings from Lichess"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button>
+      <a href="settings.html" class="icon-btn od-fixed" aria-label="Settings"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></a>
+    </header>
+      <div class="od-scroll pb-6">
+        <div class="od-rail mb-5" data-chips="tc" data-tone="chess" role="group" aria-label="Primary time control">
+          <button class="chip" data-value="rapid" aria-pressed="true">Rapid</button>
+          <button class="chip" data-value="blitz" aria-pressed="false">Blitz</button>
+          <button class="chip" data-value="classical" aria-pressed="false">Classical</button>
+          <button class="chip" data-value="puzzle" aria-pressed="false">Puzzles</button>
+        </div>
+        <div class="px-4">
+          <section class="mb-5" aria-label="Current rating">
+            <p class="od-row" style="align-items:baseline; --od-gap:10px">
+              <span class="num-xl text-chess" data-chess="current">1,262</span>
+              <span class="num-sm text-muted">/ 1,500</span>
+            </p>
+            <p class="mt-3" data-chess="status"><span class="status status-good"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><span>+12 ahead of target line</span></span></p>
+          </section>
+          <div class="od-grid mb-4" style="--od-cols:3">
+            <p class="od-stat"><span class="num-sm" data-chess="week">+34</span><span class="cap">this week</span></p>
+            <p class="od-stat"><span class="num-sm" data-chess="togo">238</span><span class="cap">points to go</span></p>
+            <p class="od-stat"><span class="num-sm">1,250</span><span class="cap">target today</span></p>
+          </div>
+          <section class="card mb-3" aria-labelledby="ch-chart">
+            <div class="od-row mb-3"><h2 id="ch-chart" class="h-sec od-fill">8-week plan</h2><span class="sub od-nowrap" data-sync-text>Synced 9:38</span></div>
+            <svg class="chart" viewBox="0 0 343 212" role="img" aria-label="Rating since 30 Oct against a dashed target line from 1,100 to 1,500 on 25 Dec. Current rapid rating 1,262."><line x1="4" x2="297" y1="182" y2="182" stroke="var(--line)" stroke-width="1"/><text x="4" y="204" font-size="12" fill="var(--muted)" text-anchor="start">30 Oct</text><text x="77.25" y="204" font-size="12" fill="var(--muted)" text-anchor="middle">13 Nov</text><text x="150.5" y="204" font-size="12" fill="var(--muted)" text-anchor="middle">27 Nov</text><text x="223.75" y="204" font-size="12" fill="var(--muted)" text-anchor="middle">11 Dec</text><text x="299" y="204" font-size="12" fill="var(--muted)" text-anchor="end">25 Dec</text><line x1="113.875" x2="113.875" y1="16" y2="182" stroke="var(--line)" stroke-width="1"/><text x="117.875" y="26" font-size="12" fill="var(--muted)">Today</text><line x1="4" y1="168.88" x2="297" y2="37.68" stroke="var(--target)" stroke-width="1.5" stroke-dasharray="5 5"/><text x="303" y="41.68" font-size="12" fill="var(--muted)">1,500</text><text x="4" y="188.88" font-size="12" fill="var(--muted)">1,100</text><g data-series="rapid"><path d="M4.0 168.9 L14.5 164.9 L24.9 166.3 L35.4 158.7 L45.9 152.5 L56.3 145.9 L66.8 134.4 L77.3 126.9 L87.7 124.3 L98.2 122.6 L103.4 119.7 L113.9 115.7" fill="none" stroke="var(--chess)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="113.875" cy="115.744" r="4.5" fill="var(--chess)" stroke="var(--surface)" stroke-width="2"/><text x="122.875" y="107.744" font-size="14" font-weight="700" fill="var(--chess-ink)">1,262</text></g><g data-series="blitz" hidden><path d="M4.0 158.4 L19.7 162.3 L35.4 155.4 L51.1 152.5 L66.8 148.5 L77.3 147.2 L92.9 145.9 L113.9 140.0" fill="none" stroke="var(--chess)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="113.875" cy="140.01600000000002" r="4.5" fill="var(--chess)" stroke="var(--surface)" stroke-width="2"/><text x="122.875" y="132.01600000000002" font-size="14" font-weight="700" fill="var(--chess-ink)">1,188</text></g><g data-series="classical" hidden><path d="M4.0 132.8 L40.6 124.3 L77.3 112.8 L113.9 101.6" fill="none" stroke="var(--chess)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="113.875" cy="101.64" r="4.5" fill="var(--chess)" stroke="var(--surface)" stroke-width="2"/><text x="122.875" y="93.64" font-size="14" font-weight="700" fill="var(--chess-ink)">1,305</text></g><g data-series="puzzle" hidden><path d="M4.0 44.2 L19.7 39.3 L35.4 37.0 L51.1 41.3 L66.8 30.8 L82.5 27.8 L98.2 29.2 L113.9 24.6" fill="none" stroke="var(--chess)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="113.875" cy="24.560000000000006" r="4.5" fill="var(--chess)" stroke="var(--surface)" stroke-width="2"/><text x="122.875" y="16.560000000000006" font-size="14" font-weight="700" fill="var(--chess-ink)">1,540</text></g></svg>
+          </section>
+          <section class="card" aria-labelledby="ch-recent">
+            <div class="od-row mb-1"><h2 id="ch-recent" class="h-sec od-fill">Recent study</h2><a href="log.html" class="link-btn od-fixed text-chess"><span>See all</span><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a></div>
+            <div class="session-row">
+            <span class="badge-icon badge-chess"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></svg></span>
+            <span class="od-field od-fill"><span class="row-title">Tactics</span><span class="sub od-truncate">Puzzle Storm, then 20 rated puzzles</span></span>
+            <span class="od-field od-fixed text-right"><span class="row-val od-nowrap">30 min</span><span class="sub od-nowrap">Fri 20 Nov</span></span>
+          </div>
+            <div class="session-row">
+            <span class="badge-icon badge-chess"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></svg></span>
+            <span class="od-field od-fill"><span class="row-title">Rated game</span><span class="sub od-truncate">3 rapid games · 2 wins, 1 loss</span></span>
+            <span class="od-field od-fixed text-right"><span class="row-val od-nowrap">60 min</span><span class="sub od-nowrap">Thu 19 Nov</span></span>
+          </div>
+            <div class="session-row">
+            <span class="badge-icon badge-chess"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></svg></span>
+            <span class="od-field od-fill"><span class="row-title">Game review</span><span class="sub od-truncate">Reviewed Thursday’s loss: missed knight fork on move 23</span></span>
+            <span class="od-field od-fixed text-right"><span class="row-val od-nowrap">30 min</span><span class="sub od-nowrap">Wed 18 Nov</span></span>
+          </div>
+            <div class="session-row">
+            <span class="badge-icon badge-chess"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></svg></span>
+            <span class="od-field od-fill"><span class="row-title">Openings</span><span class="sub od-truncate">Caro-Kann, Advance Variation</span></span>
+            <span class="od-field od-fixed text-right"><span class="row-val od-nowrap">30 min</span><span class="sub od-nowrap">Tue 17 Nov</span></span>
+          </div>
+          </section>
+        </div>
+      </div>
+      <nav class="tabbar" aria-label="Main">
+      <a href="home.html" class="tab"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg><span>Home</span></a>
+      <a href="chess.html" class="tab" aria-current="page"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></svg><span>Chess</span></a>
+      <button class="tab tab-add" data-open="sheet-quick" aria-haspopup="dialog" data-focus-fallback><span class="tab-add-disc"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span><span>Add</span></button>
+      <a href="weight.html" class="tab"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.5A2 2 0 0 0 17.48 8Z"/></svg><span>Weight</span></a>
+      <a href="log-form.html" class="tab"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg><span>Log</span></a>
+    </nav>
+        </div>
+    <div class="sheet-layer" id="sheet-quick" hidden>
+  <div class="scrim" data-close></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="qa-title">
+    <div class="grabber" aria-hidden="true"></div>
+    <div class="od-row mb-4"><h2 id="qa-title" class="h-sheet od-fill">Quick add</h2><button class="icon-btn od-fixed" data-close aria-label="Close"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+    <div class="od-stack" style="--od-gap:12px">
+      <button class="choice" data-open="sheet-weight" data-prefill="93.1" data-autofocus>
+        <span class="badge-icon badge-fit"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.5A2 2 0 0 0 17.48 8Z"/></svg></span>
+        <span class="od-field od-fill"><span class="choice-title">Weight</span><span class="sub">Last 93.1 kg · today</span></span>
+        <svg class="od-icon text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+      <a class="choice" href="log-form.html">
+        <span class="badge-icon badge-chess"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg></span>
+        <span class="od-field od-fill"><span class="choice-title">Session</span><span class="sub">Chess study or training</span></span>
+        <svg class="od-icon text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </a>
+    </div>
+  </section>
+</div>
+    <div class="sheet-layer" id="sheet-weight" hidden data-prefill="93.1" data-date="2026-11-20" data-note="Today is already logged (93.1 kg). Saving replaces it.">
+  <div class="scrim" data-close></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="w-title">
+    <div class="grabber" aria-hidden="true"></div>
+    <div class="od-row mb-2"><h2 id="w-title" class="h-sheet od-fill">Log weight</h2><button class="icon-btn od-fixed" data-close aria-label="Close"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+    <div class="od-row mb-1">
+      <label for="w-date" class="label od-fill">Date</label>
+      <input id="w-date" type="date" class="input od-fixed" style="width:168px" value="2026-11-20">
+    </div>
+    <p class="weight-display" aria-live="polite"><span class="od-nowrap"><output data-weight-value aria-label="Weight in kilograms">93.1</output><span class="unit">kg</span></span></p>
+    <p class="sub text-center mb-1" data-weight-note>Today is already logged (93.1 kg). Saving replaces it.</p>
+    <p class="field-error text-center mb-1" id="w-error" hidden>Enter a weight between 30 and 300 kg.</p>
+    <div class="keypad mt-3" role="group" aria-label="Number pad">
+      <button class="key" data-key="1">1</button><button class="key" data-key="2">2</button><button class="key" data-key="3">3</button><button class="key" data-key="4">4</button><button class="key" data-key="5">5</button><button class="key" data-key="6">6</button><button class="key" data-key="7">7</button><button class="key" data-key="8">8</button><button class="key" data-key="9">9</button>
+      <button class="key" data-key=".">.</button><button class="key" data-key="0">0</button><button class="key" data-key="back" aria-label="Delete last digit"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg></button>
+    </div>
+    <button class="link-btn mt-2" data-toggle="w-waist" aria-expanded="false" aria-controls="w-waist"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add waist (optional)</span></button>
+    <div id="w-waist" class="od-row mb-1" hidden>
+      <label for="w-waist-input" class="label od-fill">Waist</label>
+      <div class="input-affix od-fixed" style="width:140px"><input id="w-waist-input" class="input" inputmode="decimal" value=""><span class="affix">cm</span></div>
+    </div>
+    <button class="btn btn-primary w-full mt-2" data-save-weight data-autofocus>Save weight</button>
+  </section>
+</div>
+    <div class="toast" role="status" aria-live="polite" hidden><span class="toast-msg"></span><button class="toast-undo">Undo</button></div>
+    <script>window.CHESS_DATA = {"rapid":{"current":"1,262","week":"+34","togo":"238","status":"<span class=\"status status-good\"><svg class=\"od-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/></svg><span>+12 ahead of target line</span></span>"},"blitz":{"current":"1,188","week":"+22","togo":"312","status":"<span class=\"status status-warn\"><svg class=\"od-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/></svg><span>62 behind target line</span></span>"},"classical":{"current":"1,305","week":"+34","togo":"195","status":"<span class=\"status status-good\"><svg class=\"od-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/></svg><span>+55 ahead of target line</span></span>"},"puzzle":{"current":"1,540","week":"+19","togo":"0","status":"<span class=\"status status-good\"><svg class=\"od-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/></svg><span>+290 ahead of target line</span></span>"}};</script>
+        <!-- APP CONTENT END -->
+      </main>
+
+      <div class="status-bar" aria-hidden="true">
+        <span class="status-time">9:41</span>
+        <span class="status-cutout-zone"></span>
+        <span class="status-icons">
+          <svg class="connectivity" viewBox="0 0 15 12"><path d="M1.5 10.5v-2m4 2v-4.5m4 4.5v-7m4 7v-9"/></svg>
+          <svg class="wifi" viewBox="0 0 16 12"><path d="M1.5 4.7a9.2 9.2 0 0 1 13 0M4.2 7.3a5.4 5.4 0 0 1 7.6 0M6.9 10a1.55 1.55 0 0 1 2.2 0"/></svg>
+          <svg class="battery" viewBox="0 0 20 11"><rect x=".75" y="1.25" width="16.5" height="8.5" rx="2"/><path d="M18.5 4v3M3.2 3.4h10.4v4.2H3.2z" fill="currentColor" stroke="none"/></svg>
+        </span>
+      </div>
+      <div class="camera-dot" aria-hidden="true"></div>
+      <div class="gesture-indicator" aria-hidden="true"></div>
+    </section>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

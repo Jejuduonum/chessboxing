@@ -1,0 +1,409 @@
+<!doctype html>
+<!-- Chess Boxing Tracker — v1 design mock: Log · New session. Static HTML + Tailwind, 375px wide, platform-neutral phone shell. -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Log · New session · Chess Boxing Tracker mock</title>
+  <style>
+/* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio, geometry.
+   Put this @layer first; product CSS outside the layer wins ordinary layout rules.
+   Native hidden and closed-dialog states take precedence over component display rules. */
+@layer od-layout {
+  [hidden]:not([hidden="until-found" i]) { display: none !important; }
+  dialog:not([open]) { display: none !important; }
+
+  :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+  /* containers */
+  .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+  .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+  .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+  .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+  .od-fill    { flex: 1 1 0; min-width: 0; }
+  .od-fixed   { flex: none; }
+  .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+  /* stacked information: each piece is its own line — never sibling inline spans */
+  .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+  :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+  .od-tile { display: grid; grid-template-rows: auto 1fr; }
+  :where(.od-tile) > :where(*) { display: block; }
+
+  /* media keeps its intrinsic ratio by default; never a distorted or cropped
+     cover by accident. height:auto lets the ratio win over an <img height="…">
+     attribute. Cropping to a uniform box is an explicit opt-in: set --od-ratio
+     AND add .od-media-cover together (per the core rule, only where a crop is
+     deliberate — tile thumbs, decorative fills — never on full-frame content). */
+  .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+  .od-media-cover { object-fit: cover; }
+
+  /* functional inline SVG icons opt into bounded geometry; content SVGs keep their own */
+  .od-icon { display: inline-block; inline-size: var(--od-icon-size, 1em); block-size: var(--od-icon-size, 1em); flex: none; }
+
+  /* data text only — authored copy is rewritten to its budget instead */
+  .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .od-clamp-2 { -webkit-line-clamp: 2; }
+  .od-clamp-3 { -webkit-line-clamp: 3; }
+  .od-lines-2 { min-height: calc(2 * 1.4em); }   /* block-level reservation for a shared baseline */
+  .od-nowrap  { white-space: nowrap; }           /* 数字+单位 · 价格+起 · 日期+星期 */
+  .od-keep    { word-break: keep-all; overflow-wrap: anywhere; } /* CJK labels break at spaces / <wbr> first */
+
+  /* screen skeleton (optional): bars take their own space, the middle scrolls — no padding guessed for chrome */
+  .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+  .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+  /* horizontal rail: the next item peeks at the edge; trailing room survives overflow */
+  .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+             padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+  .od-rail::-webkit-scrollbar { display: none; }
+  :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+  :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+  .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+  .od-touch  { min-width: 44px; min-height: 44px; }
+}
+:root [hidden]:where(:not([hidden="until-found" i])) { display: none; }
+/* /OD-LAYOUT-PRIMITIVES v1 */
+
+
+    /* Native hidden remains authoritative over component flex/grid styles. */
+    [hidden]:not([hidden="until-found" i]) { display: none !important; }
+
+    :root {
+      --phone-screen-width: 375px;
+      --phone-screen-height: 812px;
+      --phone-bezel: 10px;
+      --phone-outer-radius: 52px;
+      --phone-screen-radius: 42px;
+      --phone-safe-top: 50px;
+      --phone-safe-bottom: 29px;
+      --phone-system-fg: #F2F2F0;
+      --phone-screen-bg: #0E0E10;
+      --phone-stage-bg: #eaebee;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 32px;
+      background:
+        radial-gradient(circle at 50% 15%, rgba(255,255,255,.94), transparent 35%),
+        var(--phone-stage-bg, #eaebee);
+      color: #191a1d;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .phone-frame {
+      position: relative;
+      width: calc(var(--phone-screen-width, 390px) + var(--phone-bezel, 10px) * 2);
+      height: calc(var(--phone-screen-height, 844px) + var(--phone-bezel, 10px) * 2);
+      padding: var(--phone-bezel, 10px);
+      border-radius: var(--phone-outer-radius, 52px);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.2), transparent 17%),
+        linear-gradient(160deg, #3f4146 0%, #202227 48%, #0b0c0f 100%);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.13),
+        inset 0 0 0 2px rgba(0,0,0,.85),
+        0 32px 68px -20px rgba(10,12,16,.52),
+        0 10px 24px -10px rgba(10,12,16,.32);
+      isolation: isolate;
+    }
+
+    .phone-frame::before,
+    .phone-frame::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      top: 96px;
+      bottom: 96px;
+      width: 2px;
+      background: linear-gradient(to bottom, transparent, rgba(255,255,255,.13) 16%, transparent 30%, transparent 72%, rgba(255,255,255,.07) 88%, transparent);
+    }
+    .phone-frame::before { left: 0; }
+    .phone-frame::after { right: 0; }
+
+    .hardware-button {
+      position: absolute;
+      width: 4px;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #08090b, #2a2d33 60%, #08090b);
+      box-shadow: inset 0 1px rgba(255,255,255,.08);
+    }
+    .hardware-button.volume { left: -3px; top: 222px; height: 86px; }
+    .hardware-button.power { right: -3px; top: 270px; height: 82px; }
+
+    .phone-screen {
+      position: relative;
+      width: var(--phone-screen-width, 390px);
+      height: var(--phone-screen-height, 844px);
+      overflow: hidden;
+      border-radius: var(--phone-screen-radius, 42px);
+      background: var(--phone-screen-bg, #f8f8f9);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+    }
+
+    .phone-content {
+      position: absolute;
+      inset: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-top: var(--phone-safe-top, 50px);
+      padding-bottom: var(--phone-safe-bottom, 29px);
+      background: var(--phone-screen-bg, #f8f8f9);
+    }
+    .phone-content::-webkit-scrollbar { display: none; }
+
+    .camera-dot {
+      position: absolute;
+      z-index: 20;
+      top: 13px;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 35%, #344154 0 12%, #0a0c10 34%, #000 76%);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.06);
+      pointer-events: none;
+    }
+
+    .status-bar {
+      position: absolute;
+      z-index: 15;
+      inset: 0 0 auto;
+      height: var(--phone-safe-top, 50px);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr);
+      align-items: start;
+      padding: 14px 20px 0;
+      color: var(--phone-system-fg, #17181a);
+      opacity: .8;
+      pointer-events: none;
+    }
+    .status-time {
+      justify-self: start;
+      display: flex;
+      align-items: center;
+      height: 15px;
+      font-size: 14px;
+      font-weight: 560;
+      line-height: 1;
+      letter-spacing: .01em;
+    }
+    .status-cutout-zone { width: 56px; }
+    .status-icons {
+      justify-self: end;
+      display: inline-flex;
+      align-items: center;
+      height: 15px;
+      gap: 6px;
+    }
+    .status-icons svg {
+      display: block;
+      flex: none;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.35;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .status-icons .connectivity { width: 15px; height: 12px; }
+    .status-icons .wifi { width: 15px; height: 12px; }
+    .status-icons .battery { width: 19px; height: 11px; }
+
+    .gesture-indicator {
+      position: absolute;
+      z-index: 20;
+      left: 50%;
+      bottom: 8px;
+      width: 96px;
+      height: 4px;
+      transform: translateX(-50%);
+      border-radius: 99px;
+      background: var(--phone-system-fg, #17181a);
+      opacity: .86;
+      pointer-events: none;
+    }
+
+    /* Presentation scaling: keep the whole handset visible on short viewports. */
+    @media (max-height: 927px) { .phone-frame { zoom: 0.9; } }
+    @media (max-height: 840px) { .phone-frame { zoom: 0.82; } }
+    @media (max-height: 771px) { .phone-frame { zoom: 0.74; } }
+    @media (max-height: 702px) { .phone-frame { zoom: 0.66; } }
+    /* Narrow viewports: the handset chrome collapses and the screen fills the
+       viewport, so the app behaves like a real phone page instead of
+       scrolling sideways. */
+    @media (max-width: 480px) {
+      body { padding: 0; display: block; }
+      .phone-frame { width: 100%; height: 100dvh; padding: 0; border-radius: 0; background: none; box-shadow: none; zoom: 1; }
+      .phone-frame::before, .phone-frame::after, .hardware-button { display: none; }
+      .phone-screen { width: 100%; height: 100%; border-radius: 0; }
+    }
+  
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="tw.config.js"></script>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <div class="phone-frame" data-phone-shell data-platform="neutral">
+    <span class="hardware-button volume" aria-hidden="true"></span>
+    <span class="hardware-button power" aria-hidden="true"></span>
+
+    <section class="phone-screen" data-phone-screen>
+      <main class="phone-content" data-phone-content>
+        <!-- APP CONTENT START: replace everything inside this sample wrapper with the product. -->
+        <div class="app od-screen" data-theme="dark">
+      <header class="od-row px-4 pt-3 pb-3">
+      <div class="od-field od-fill"><span class="eyebrow">Fri 20 Nov</span><h1 class="h-title">Log</h1></div>
+      
+      <a href="settings.html" class="icon-btn od-fixed" aria-label="Settings"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></a>
+    </header>
+      <div class="od-scroll pb-6">
+        <nav class="seg mx-4 mb-4" aria-label="Log views">
+        <a href="log-form.html" aria-current="page">New session</a>
+        <a href="log.html">History</a>
+      </nav>
+        <div class="px-4 od-stack" style="--od-gap:20px">
+          <div class="od-row">
+            <label for="s-date" class="label od-fill">Date</label>
+            <input id="s-date" type="date" class="input od-fixed" style="width:168px" value="2026-11-20">
+          </div>
+          <div class="od-stack" style="--od-gap:8px">
+            <span class="label" id="cat-label">Category</span>
+            <div class="seg" data-chips="category" data-tone="fitness" role="group" aria-labelledby="cat-label">
+              <button data-value="chess" aria-pressed="false">Chess</button>
+              <button data-value="fitness" aria-pressed="true">Fitness</button>
+            </div>
+          </div>
+          <div class="od-stack" style="--od-gap:8px">
+            <span class="label" id="type-label">Type</span>
+            <div data-types="fitness" data-tone="fitness" aria-labelledby="type-label">
+              <div class="od-cluster" data-chips="type-fitness" role="group">
+            <button class="chip" data-value="boxing" aria-pressed="true">Boxing</button>
+            <button class="chip" data-value="cardio" aria-pressed="false">Cardio</button>
+            <button class="chip" data-value="strength" aria-pressed="false">Strength</button>
+            <button class="chip" data-value="other" aria-pressed="false">Other</button>
+          </div>
+            </div>
+            <div data-types="chess" data-tone="chess" aria-labelledby="type-label" hidden>
+              <div class="od-cluster" data-chips="type-chess" role="group">
+            <button class="chip" data-value="tactics" aria-pressed="false">Tactics</button>
+            <button class="chip" data-value="rated" aria-pressed="false">Rated game</button>
+            <button class="chip" data-value="review" aria-pressed="false">Game review</button>
+            <button class="chip" data-value="openings" aria-pressed="false">Openings</button>
+            <button class="chip" data-value="endgames" aria-pressed="false">Endgames</button>
+          </div>
+            </div>
+          </div>
+          <div class="od-stack" style="--od-gap:8px">
+            <span class="label" id="dur-label">Duration (minutes)</span>
+            <div class="od-cluster" data-chips="duration" role="group" aria-labelledby="dur-label">
+            <button class="chip" data-value="15" aria-pressed="false">15</button>
+            <button class="chip" data-value="30" aria-pressed="false">30</button>
+            <button class="chip" data-value="45" aria-pressed="true">45</button>
+            <button class="chip" data-value="60" aria-pressed="false">60</button>
+            <button class="chip" data-value="custom" aria-pressed="false">Custom</button>
+          </div>
+            <div id="custom-duration" class="od-stack" style="--od-gap:6px" hidden>
+              <label for="dur-custom" class="label">Custom minutes</label>
+              <div class="input-affix" style="max-width:180px"><input id="dur-custom" class="input" inputmode="numeric" value="" data-validate data-required data-min="1" data-max="600" aria-describedby="dur-custom-error"><span class="affix">min</span></div>
+              <p class="field-error" id="dur-custom-error" hidden>Enter minutes between 1 and 600.</p>
+            </div>
+          </div>
+          <div class="od-stack" style="--od-gap:8px">
+            <div class="od-row"><span class="label od-fill" id="int-label">Intensity</span><span class="sub od-fixed">1 easy · 5 all-out</span></div>
+            <div class="od-row" data-chips="intensity" role="group" aria-labelledby="int-label" style="--od-gap:8px">
+              <button class="chip chip-square" data-value="1" aria-pressed="false">1</button><button class="chip chip-square" data-value="2" aria-pressed="false">2</button><button class="chip chip-square" data-value="3" aria-pressed="false">3</button><button class="chip chip-square" data-value="4" aria-pressed="true">4</button><button class="chip chip-square" data-value="5" aria-pressed="false">5</button>
+            </div>
+          </div>
+          <div class="od-stack" style="--od-gap:6px">
+            <label for="s-notes" class="label">Notes <span class="req">(optional)</span></label>
+            <textarea id="s-notes" class="input" rows="3">Pad work, 6 × 3 min rounds</textarea>
+          </div>
+          <button class="btn btn-primary w-full" data-save-session>Save session</button>
+        </div>
+      </div>
+      <nav class="tabbar" aria-label="Main">
+      <a href="home.html" class="tab"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg><span>Home</span></a>
+      <a href="chess.html" class="tab"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></svg><span>Chess</span></a>
+      <button class="tab tab-add" data-open="sheet-quick" aria-haspopup="dialog" data-focus-fallback><span class="tab-add-disc"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span><span>Add</span></button>
+      <a href="weight.html" class="tab"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.5A2 2 0 0 0 17.48 8Z"/></svg><span>Weight</span></a>
+      <a href="log-form.html" class="tab" aria-current="page"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg><span>Log</span></a>
+    </nav>
+        </div>
+    <div class="sheet-layer" id="sheet-quick" hidden>
+  <div class="scrim" data-close></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="qa-title">
+    <div class="grabber" aria-hidden="true"></div>
+    <div class="od-row mb-4"><h2 id="qa-title" class="h-sheet od-fill">Quick add</h2><button class="icon-btn od-fixed" data-close aria-label="Close"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+    <div class="od-stack" style="--od-gap:12px">
+      <button class="choice" data-open="sheet-weight" data-prefill="93.1" data-autofocus>
+        <span class="badge-icon badge-fit"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.5A2 2 0 0 0 17.48 8Z"/></svg></span>
+        <span class="od-field od-fill"><span class="choice-title">Weight</span><span class="sub">Last 93.1 kg · today</span></span>
+        <svg class="od-icon text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+      <a class="choice" href="log-form.html">
+        <span class="badge-icon badge-chess"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg></span>
+        <span class="od-field od-fill"><span class="choice-title">Session</span><span class="sub">Chess study or training</span></span>
+        <svg class="od-icon text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </a>
+    </div>
+  </section>
+</div>
+    <div class="sheet-layer" id="sheet-weight" hidden data-prefill="93.1" data-date="2026-11-20" data-note="Today is already logged (93.1 kg). Saving replaces it.">
+  <div class="scrim" data-close></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="w-title">
+    <div class="grabber" aria-hidden="true"></div>
+    <div class="od-row mb-2"><h2 id="w-title" class="h-sheet od-fill">Log weight</h2><button class="icon-btn od-fixed" data-close aria-label="Close"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+    <div class="od-row mb-1">
+      <label for="w-date" class="label od-fill">Date</label>
+      <input id="w-date" type="date" class="input od-fixed" style="width:168px" value="2026-11-20">
+    </div>
+    <p class="weight-display" aria-live="polite"><span class="od-nowrap"><output data-weight-value aria-label="Weight in kilograms">93.1</output><span class="unit">kg</span></span></p>
+    <p class="sub text-center mb-1" data-weight-note>Today is already logged (93.1 kg). Saving replaces it.</p>
+    <p class="field-error text-center mb-1" id="w-error" hidden>Enter a weight between 30 and 300 kg.</p>
+    <div class="keypad mt-3" role="group" aria-label="Number pad">
+      <button class="key" data-key="1">1</button><button class="key" data-key="2">2</button><button class="key" data-key="3">3</button><button class="key" data-key="4">4</button><button class="key" data-key="5">5</button><button class="key" data-key="6">6</button><button class="key" data-key="7">7</button><button class="key" data-key="8">8</button><button class="key" data-key="9">9</button>
+      <button class="key" data-key=".">.</button><button class="key" data-key="0">0</button><button class="key" data-key="back" aria-label="Delete last digit"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg></button>
+    </div>
+    <button class="link-btn mt-2" data-toggle="w-waist" aria-expanded="false" aria-controls="w-waist"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add waist (optional)</span></button>
+    <div id="w-waist" class="od-row mb-1" hidden>
+      <label for="w-waist-input" class="label od-fill">Waist</label>
+      <div class="input-affix od-fixed" style="width:140px"><input id="w-waist-input" class="input" inputmode="decimal" value=""><span class="affix">cm</span></div>
+    </div>
+    <button class="btn btn-primary w-full mt-2" data-save-weight data-autofocus>Save weight</button>
+  </section>
+</div>
+    <div class="toast" role="status" aria-live="polite" hidden data-demo="Boxing · 45 min saved"><span class="toast-msg"></span><button class="toast-undo">Undo</button></div>
+        <!-- APP CONTENT END -->
+      </main>
+
+      <div class="status-bar" aria-hidden="true">
+        <span class="status-time">9:41</span>
+        <span class="status-cutout-zone"></span>
+        <span class="status-icons">
+          <svg class="connectivity" viewBox="0 0 15 12"><path d="M1.5 10.5v-2m4 2v-4.5m4 4.5v-7m4 7v-9"/></svg>
+          <svg class="wifi" viewBox="0 0 16 12"><path d="M1.5 4.7a9.2 9.2 0 0 1 13 0M4.2 7.3a5.4 5.4 0 0 1 7.6 0M6.9 10a1.55 1.55 0 0 1 2.2 0"/></svg>
+          <svg class="battery" viewBox="0 0 20 11"><rect x=".75" y="1.25" width="16.5" height="8.5" rx="2"/><path d="M18.5 4v3M3.2 3.4h10.4v4.2H3.2z" fill="currentColor" stroke="none"/></svg>
+        </span>
+      </div>
+      <div class="camera-dot" aria-hidden="true"></div>
+      <div class="gesture-indicator" aria-hidden="true"></div>
+    </section>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
