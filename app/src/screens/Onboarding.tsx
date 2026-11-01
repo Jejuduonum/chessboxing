@@ -5,7 +5,18 @@ import { saveHistory, latestRating, type RatingHistory } from '../lib/lichess';
 import { LichessConnect } from '../components/LichessConnect';
 import { BigButton, Dot, Field, Icon, IconButton, inputClass } from '../components/ui';
 
-type Step = 'welcome' | 'goals' | 'lichess';
+type Step = 'welcome' | 'lichess' | 'goals';
+
+const GOAL_TCS: TimeControl[] = ['rapid', 'blitz', 'classical'];
+
+/** The time control the player actually plays most, so the goal starts from a real rating. */
+function mostPlayed(h: RatingHistory): TimeControl | null {
+  const played = GOAL_TCS.filter((tc) => latestRating(h[tc]) !== null);
+  return played.sort((a, b) => h[b].length - h[a].length)[0] ?? null;
+}
+
+/** A suggested target: +300, rounded up to the next 50. Editable. */
+const suggestTarget = (r: number) => Math.min(3500, Math.ceil((r + 300) / 50) * 50);
 
 interface Draft {
   primaryTimeControl: TimeControl;
@@ -21,8 +32,8 @@ export function Onboarding() {
   const [step, setStep] = useState<Step>('welcome');
   const [draft, setDraft] = useState<Draft>({
     primaryTimeControl: 'rapid',
-    startRating: '1100',
-    targetRating: '1500',
+    startRating: '',
+    targetRating: '',
     startWeightKg: '',
     targetWeightKg: '',
     targetDate: addDays(today, 56),
@@ -35,8 +46,15 @@ export function Onboarding() {
   const set = (k: keyof Draft, v: string) => setDraft((d) => ({ ...d, [k]: v }));
   const num = (v: string) => parseFloat(v.replace(',', '.'));
 
+  // With Lichess connected, the starting rating comes from the account; it's only typed when
+  // there's no rating for the chosen time control (or Lichess was skipped).
+  const lichessRating = history ? latestRating(history[draft.primaryTimeControl]) : null;
+  const sr = lichessRating ?? num(draft.startRating);
+  const suggested = sr >= 400 && sr <= 3500 ? suggestTarget(sr) : null;
+  const targetValue = draft.targetRating !== '' ? draft.targetRating : suggested !== null ? String(suggested) : '';
+
   const errors: Partial<Record<keyof Draft, string>> = {};
-  const sr = num(draft.startRating), tr = num(draft.targetRating), sw = num(draft.startWeightKg), tw = num(draft.targetWeightKg);
+  const tr = num(targetValue), sw = num(draft.startWeightKg), tw = num(draft.targetWeightKg);
   if (!(sr >= 400 && sr <= 3500)) errors.startRating = 'Enter a rating between 400 and 3500.';
   if (!(tr >= 400 && tr <= 3500)) errors.targetRating = 'Enter a rating between 400 and 3500.';
   else if (!errors.startRating && tr <= sr) errors.targetRating = 'Target should be above your current rating.';
@@ -46,7 +64,8 @@ export function Onboarding() {
   const goalsValid = Object.keys(errors).length === 0;
   const showErr = (k: keyof Draft) => (touched[k] ? errors[k] : undefined);
 
-  const finish = async (withLichess: boolean) => {
+  const finish = async () => {
+    const withLichess = !!history;
     setSaving(true);
     const settings: Settings = {
       id: 'me',
@@ -99,18 +118,18 @@ export function Onboarding() {
           </li>
         </ul>
         <div className="mt-auto pt-10">
-          <BigButton onClick={() => setStep('goals')} data-autofocus>Get started</BigButton>
+          <BigButton onClick={() => setStep('lichess')} data-autofocus>Get started</BigButton>
           <p className="mt-4 text-center text-[15px] text-muted">Your data stays on this device.</p>
         </div>
       </main>
     );
   }
 
-  const stepNo = step === 'goals' ? 1 : 2;
+  const stepNo = step === 'lichess' ? 1 : 2;
   const header = (
     <div className="pt-[calc(env(safe-area-inset-top)+12px)]">
       <div className="flex items-center justify-between">
-        <IconButton icon="left" label="Back" size={26} onClick={() => setStep(step === 'goals' ? 'welcome' : 'goals')} className="-ml-2" />
+        <IconButton icon="left" label="Back" size={26} onClick={() => setStep(step === 'lichess' ? 'welcome' : 'lichess')} className="-ml-2" />
         <p className="text-[16px] text-muted">Step {stepNo} of 2</p>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2" aria-hidden="true">
@@ -124,7 +143,6 @@ export function Onboarding() {
     const days = daysBetween(today, draft.targetDate);
     const pts = !errors.startRating && !errors.targetRating ? tr - sr : null;
     const kg = !errors.startWeightKg && !errors.targetWeightKg ? tw - sw : null;
-    const tcs: TimeControl[] = ['rapid', 'blitz', 'classical'];
     return (
       <main className="mx-auto flex min-h-dvh max-w-app flex-col px-6 pb-[calc(env(safe-area-inset-bottom)+24px)]">
         {header}
@@ -133,27 +151,39 @@ export function Onboarding() {
 
         <h2 className="mt-6 flex items-center gap-2 text-[15px] font-semibold uppercase tracking-[0.08em] text-muted"><Dot tone="chess" />Chess</h2>
         <div role="radiogroup" aria-label="Goal time control" className="mt-3 grid grid-cols-3 gap-3">
-          {tcs.map((tc) => {
+          {GOAL_TCS.map((tc) => {
             const on = draft.primaryTimeControl === tc;
+            const r = history ? latestRating(history[tc]) : null;
             return (
               <button
                 key={tc}
                 role="radio"
                 aria-checked={on}
                 onClick={() => set('primaryTimeControl', tc)}
-                className={cn('min-h-[52px] rounded-2xl border text-[17px] font-medium transition-colors duration-150', on ? 'border-chess bg-chess-soft text-ink' : 'border-line bg-surface text-muted hover:text-ink')}
+                className={cn('flex min-h-[52px] flex-col items-center justify-center rounded-2xl border py-2 text-[17px] font-medium transition-colors duration-150', on ? 'border-chess bg-chess-soft text-ink' : 'border-line bg-surface text-muted hover:text-ink')}
               >
-                {TC_LABEL[tc]}
+                <span className="block">{TC_LABEL[tc]}</span>
+                {history && <span className="block text-[13px] font-normal text-muted">{r === null ? 'no games' : fmtInt(r)}</span>}
               </button>
             );
           })}
         </div>
         <div className="mt-4 grid grid-cols-2 gap-4">
-          <Field id="sr" label="Current rating" error={showErr('startRating')}>
-            <input id="sr" inputMode="numeric" className={inputClass} value={draft.startRating} onChange={(e) => set('startRating', e.target.value)} onBlur={() => setTouched((t) => ({ ...t, startRating: true }))} aria-invalid={!!showErr('startRating')} />
-          </Field>
+          {lichessRating !== null ? (
+            <div className="min-w-0">
+              <p className="mb-1.5 text-[15px] text-muted">Current rating</p>
+              <div className="flex min-h-[56px] flex-col justify-center rounded-2xl bg-surface px-4">
+                <span className="block font-display text-[26px] font-bold leading-none text-chess-ink">{fmtInt(lichessRating)}</span>
+                <span className="mt-1 block truncate text-[13px] text-muted">From Lichess · {username}</span>
+              </div>
+            </div>
+          ) : (
+            <Field id="sr" label="Current rating" error={showErr('startRating')} hint={history ? `No ${TC_LABEL[draft.primaryTimeControl].toLowerCase()} games on Lichess yet` : undefined}>
+              <input id="sr" inputMode="numeric" placeholder="e.g. 1200" className={inputClass} value={draft.startRating} onChange={(e) => set('startRating', e.target.value)} onBlur={() => setTouched((t) => ({ ...t, startRating: true }))} aria-invalid={!!showErr('startRating')} />
+            </Field>
+          )}
           <Field id="tr" label="Target rating" error={showErr('targetRating')}>
-            <input id="tr" inputMode="numeric" className={inputClass} value={draft.targetRating} onChange={(e) => set('targetRating', e.target.value)} onBlur={() => setTouched((t) => ({ ...t, targetRating: true }))} aria-invalid={!!showErr('targetRating')} />
+            <input id="tr" inputMode="numeric" placeholder="e.g. 1500" className={inputClass} value={targetValue} onChange={(e) => set('targetRating', e.target.value)} onBlur={() => setTouched((t) => ({ ...t, targetRating: true }))} aria-invalid={!!showErr('targetRating')} />
           </Field>
         </div>
 
@@ -188,39 +218,39 @@ export function Onboarding() {
                 if (first) document.getElementById(ids[first])?.focus();
                 return;
               }
-              setStep('lichess');
+              void finish();
             }}
+            disabled={saving}
           >
-            Continue
+            Finish setup
           </BigButton>
         </div>
       </main>
     );
   }
 
-  const goalRating = history ? latestRating(history[draft.primaryTimeControl]) : null;
   return (
     <main className="mx-auto flex min-h-dvh max-w-app flex-col px-6 pb-[calc(env(safe-area-inset-bottom)+24px)]">
       {header}
       <h1 className="h-page mt-6">Connect Lichess</h1>
-      <p className="mt-1 text-[17px] leading-snug text-muted">We read your public rating history. No password or login needed.</p>
+      <p className="mt-1 text-[17px] leading-snug text-muted">We read your public ratings, so you don't have to type them. No password or login needed.</p>
       <div className="mt-6">
         <LichessConnect
           initial={username}
           goal={draft.primaryTimeControl}
           onChange={(u) => { setUsername(u); setHistory(null); }}
-          onFound={(u, h) => { setUsername(u); setHistory(h); }}
+          onFound={(u, h) => {
+            setUsername(u);
+            setHistory(h);
+            const tc = mostPlayed(h);
+            if (tc) setDraft((d) => ({ ...d, primaryTimeControl: tc, targetRating: '' }));
+          }}
         />
-        {goalRating !== null && Math.round(goalRating) !== Math.round(sr) && (
-          <button onClick={() => set('startRating', String(goalRating))} className="mt-3 min-h-[44px] text-left text-[16px] font-medium text-chess-ink underline underline-offset-4">
-            Use {fmtInt(goalRating)} as your starting {TC_LABEL[draft.primaryTimeControl].toLowerCase()} rating (you entered {fmtInt(sr)})
-          </button>
-        )}
       </div>
       <div className="mt-auto pt-8">
-        <BigButton disabled={!history || saving} onClick={() => void finish(true)}>Finish setup</BigButton>
-        <button disabled={saving} onClick={() => void finish(false)} className="mt-2 min-h-[48px] w-full text-[17px] text-muted hover:text-ink">
-          Skip for now
+        <BigButton disabled={!history} onClick={() => setStep('goals')}>Continue</BigButton>
+        <button onClick={() => { setHistory(null); setStep('goals'); }} className="mt-2 min-h-[48px] w-full text-[17px] text-muted hover:text-ink">
+          Skip — I'll enter my rating
         </button>
       </div>
     </main>
