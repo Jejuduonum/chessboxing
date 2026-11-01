@@ -163,6 +163,14 @@ export function Settings({ onBack }: { onBack: () => void }) {
       <p className="mt-5 text-[16px] text-muted">
         {cloud.session ? 'Stored on this device and backed up to your account. Works offline; changes sync when you’re online.' : 'Everything is stored on this device only.'}
       </p>
+      <p className="mt-3 text-[14px] leading-relaxed text-muted">
+        Game analysis powered by{' '}
+        <a href="https://stockfishchess.org" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">Stockfish</a>
+        , free software under the{' '}
+        <a href="/engine/COPYING" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">GNU GPL v3</a>
+        {' '}·{' '}
+        <a href="https://github.com/Jejuduonum/chessboxing" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">source code</a>
+      </p>
 
       {/* ---------- Editors ---------- */}
       <Sheet open={editor === 'signout'} onClose={close} labelledBy="ed-signout">
