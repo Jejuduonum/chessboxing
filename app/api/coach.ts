@@ -20,7 +20,7 @@
  *  5. The response is checked: only comments for plies that were sent, each capped in length.
  */
 import { Chess } from 'chess.js';
-import { adminClient, userFromRequest } from './_auth';
+import { adminClient, userFromRequest } from './_auth.js';
 
 export const config = { maxDuration: 60 };
 

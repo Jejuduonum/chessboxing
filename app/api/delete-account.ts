@@ -2,7 +2,7 @@
  * POST /api/delete-account — permanently deletes the signed-in user.
  * Every app table references auth.users with ON DELETE CASCADE, so all their data goes with it.
  */
-import { adminClient, userFromRequest } from './_auth';
+import { adminClient, userFromRequest } from './_auth.js';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
