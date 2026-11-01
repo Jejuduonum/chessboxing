@@ -135,4 +135,6 @@ Design tokens (colours for dark and light themes) live at the top of `src/index.
 
 ## Credits and licences
 
+This project's own code is released under the [MIT licence](../LICENSE).
+
 Game analysis is **powered by [Stockfish](https://stockfishchess.org)** via Stockfish.js 19, bundled unmodified in `public/engine/`. Stockfish is licensed under the GNU GPL v3; the licence text and source links are in `public/engine/COPYING` and `public/engine/NOTICE.md`.
